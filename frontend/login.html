@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Officer Gate & RBAC Login</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="dark-theme login-body">
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION -->
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content flex-center">
+            <div class="login-panel panel">
+                <div class="panel-header text-center">
+                    <h2 class="panel-title">KSP Officer Access & RBAC Gate</h2>
+                    <p class="panel-subtitle">Authenticate role and assign jurisdictional boundaries for multi-agent investigation queries.</p>
+                </div>
+                <div class="panel-body">
+                    <form id="loginForm" class="login-form">
+                        <div class="form-group">
+                            <label for="roleSelect">Officer Access Level / Role</label>
+                            <select id="roleSelect" class="form-select" required>
+                                <option value="investigator">Local Investigator (Single Jurisdiction Restricted)</option>
+                                <option value="senior">Senior Superintendent of Police (Statewide Access)</option>
+                                <option value="state">State Crime Records Bureau / DGP (Admin & Full Access)</option>
+                            </select>
+                            <small class="form-help">Local Investigators are blocked by the Access Gate from querying records outside their home district.</small>
+                        </div>
+
+                        <div class="form-group mt-3">
+                            <label for="districtSelect">Assigned Jurisdiction District</label>
+                            <select id="districtSelect" class="form-select" required>
+                                <option value="Mysuru">Mysuru District</option>
+                                <option value="Bengaluru">Bengaluru Urban / City</option>
+                                <option value="Hubli">Hubli-Dharwad Commissionerate</option>
+                                <option value="Mangaluru">Mangaluru District</option>
+                                <option value="Belagavi">Belagavi Range</option>
+                                <option value="Davangere">Davangere District</option>
+                                <option value="Bellary">Bellary District</option>
+                                <option value="Shimoga">Shimoga District</option>
+                                <option value="Gulbarga">Gulbarga Range</option>
+                            </select>
+                        </div>
+
+                        <div class="form-actions mt-4">
+                            <button type="submit" class="btn btn-primary w-100 py-3">Establish Session & Enter Command Center</button>
+                        </div>
+                        <div id="loginMessage" class="status-box mt-3 hidden"></div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const roleSelect = document.getElementById("roleSelect");
+            const districtSelect = document.getElementById("districtSelect");
+            
+            roleSelect.value = localStorage.getItem("crime_role") || "investigator";
+            districtSelect.value = localStorage.getItem("crime_district") || "Mysuru";
+
+            document.getElementById("loginForm").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const role = roleSelect.value;
+                const district = districtSelect.value;
+                const msg = document.getElementById("loginMessage");
+                
+                msg.classList.remove("hidden", "error");
+                msg.classList.add("info");
+                msg.textContent = "Negotiating session with Access Gate...";
+
+                try {
+                    const res = await fetch("/auth/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ role, district })
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        localStorage.setItem("crime_session_id", data.session_id);
+                        localStorage.setItem("crime_role", data.role);
+                        localStorage.setItem("crime_district", data.district);
+                        
+                        msg.classList.remove("info");
+                        msg.classList.add("success");
+                        msg.textContent = `Session ${data.session_id} established! Redirecting to Dashboard...`;
+                        
+                        setTimeout(() => {
+                            window.location.href = "dashboard.html";
+                        }, 1000);
+                    } else {
+                        throw new Error("Authentication failed");
+                    }
+                } catch (err) {
+                    msg.classList.remove("info");
+                    msg.classList.add("error");
+                    msg.textContent = "Error: Could not connect to authentication router. Using offline fallback session.";
+                    
+                    const fallbackSid = "s_" + Math.random().toString(36).substring(2, 8);
+                    localStorage.setItem("crime_session_id", fallbackSid);
+                    localStorage.setItem("crime_role", role);
+                    localStorage.setItem("crime_district", district);
+                    
+                    setTimeout(() => {
+                        window.location.href = "dashboard.html";
+                    }, 1500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

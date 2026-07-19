@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Syndicate Network Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=20260719_9">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- Main Full-Screen Graph Page -->
+        <main class="main-content graph-page">
+            <header class="top-header">
+                <div>
+                    <h2 class="page-title">Syndicate Network Explorer</h2>
+                    <p class="page-subtitle">Interactive entity-relationship graph connecting accused suspects, locations, and crime events.</p>
+                </div>
+                <div class="header-actions flex-center gap-2">
+                    <button class="btn btn-secondary btn-sm" onclick="resetGraphPhysics()">Reset Physics</button>
+                    <button class="btn btn-primary btn-sm ml-2" onclick="fitGraphView()">Center View</button>
+                </div>
+            </header>
+
+            <div class="graph-top-bar mt-2">
+                <div class="legend">
+                    <span class="legend-item"><span class="dot node-person"></span> Person / Accused</span>
+                    <span class="legend-item"><span class="dot node-location"></span> Location / Entity</span>
+                </div>
+            </div>
+
+            <div id="full-graph-container" class="full-screen-graph mt-3">
+                <div class="empty-state text-center py-5">
+                    <div class="flex-center mb-3"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg></div>
+                    <h4 class="mt-2 text-cyan">No Syndicate Connections Active</h4>
+                    <p class="text-secondary mt-1">Please run an inquiry in the Command Center first to extract and plot network entities.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js?v=20260719_13"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            loadGraphPageData();
+        });
+    </script>
+</body>
+</html>

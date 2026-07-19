@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Dataset Ingestion & Indexing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION -->
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h2 class="page-title">Dataset Ingestion & Vector Indexing</h2>
+                    <p class="page-subtitle">Upload KSP Crime Database CSVs to auto-generate SQLite tables and
+                        384-dimensional MiniLM semantic embeddings.</p>
+                </div>
+            </header>
+
+            <section class="content-body">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Upload Crime Records CSV File</h3>
+                        <span class="badge">Supports structured + narrative columns</span>
+                    </div>
+                    <div class="panel-body">
+                        <form id="uploadForm" class="upload-area">
+                            <input type="file" id="csvFile" accept=".csv" required hidden>
+                            <label for="csvFile" class="dropzone">
+                                <div class="drop-icon flex-center"><svg width="40" height="40" viewBox="0 0 24 24"
+                                        fill="none" stroke="var(--accent-cyan)" stroke-width="1.8"
+                                        stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" x2="12" y1="3" y2="15"></line>
+                                    </svg></div>
+                                <h4>Select or Drag & Drop KSP Crime Database CSV</h4>
+                                <p id="fileLabel">Required columns: case_id, district, crime_type, description,
+                                    accused_name</p>
+                            </label>
+                            <div class="mt-4 text-center">
+                                <button type="submit" class="btn btn-primary px-5 py-3">Index Dataset & Build Vector
+                                    Store</button>
+                            </div>
+                        </form>
+                        <div id="uploadStatus" class="status-box mt-4 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- PREVIEW METADATA -->
+                <div id="metadataPanel" class="panel mt-4 hidden">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Indexing Complete — Dataset Structure Summary</h3>
+                        <span id="dsIdBadge" class="badge badge-success">ID: --</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <span class="stat-label">Indexed Records</span>
+                                <span class="stat-value text-cyan" id="metaRowCount">0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Columns Detected</span>
+                                <span class="stat-value" id="metaColCount">0</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-label">Semantic Description Column</span>
+                                <span class="stat-value text-success" id="metaHasDesc">YES</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4>Parsed Column Header Names:</h4>
+                            <div id="metaColumnsList" class="badge-list mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const fileInput = document.getElementById("csvFile");
+            const fileLabel = document.getElementById("fileLabel");
+            const dropzone = document.querySelector(".dropzone");
+
+            fileInput.addEventListener("change", (e) => {
+                if (fileInput.files.length > 0) {
+                    fileLabel.textContent = `Selected: ${fileInput.files[0].name} (${(fileInput.files[0].size / 1024).toFixed(1)} KB)`;
+                }
+            });
+
+            if (dropzone) {
+                dropzone.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    dropzone.style.borderColor = "var(--accent-cyan)";
+                });
+                dropzone.addEventListener("dragleave", (e) => {
+                    e.preventDefault();
+                    dropzone.style.borderColor = "rgba(0, 242, 254, 0.3)";
+                });
+                dropzone.addEventListener("drop", (e) => {
+                    e.preventDefault();
+                    dropzone.style.borderColor = "rgba(0, 242, 254, 0.3)";
+                    if (e.dataTransfer.files.length > 0) {
+                        fileInput.files = e.dataTransfer.files;
+                        fileLabel.textContent = `Selected: ${fileInput.files[0].name} (${(fileInput.files[0].size / 1024).toFixed(1)} KB)`;
+                    }
+                });
+            }
+
+            document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const statusBox = document.getElementById("uploadStatus");
+                if (!fileInput.files.length) {
+                    statusBox.classList.remove("hidden", "info", "success");
+                    statusBox.classList.add("error");
+                    statusBox.textContent = "Please select or drag & drop a valid CSV dataset file before indexing.";
+                    return;
+                }
+
+                const file = fileInput.files[0];
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("session_id", localStorage.getItem("crime_session_id") || "default");
+
+                statusBox.classList.remove("hidden", "error", "success");
+                statusBox.classList.add("info");
+                statusBox.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.21-8.56"></path></svg>
+                        <span><strong>Ingesting & Vectorizing:</strong> Generating 384-dimensional MiniLM embeddings across all descriptions... Please wait.</span>
+                    </div>
+                `;
+
+                let baseUrl = window.location.protocol === "file:" || window.location.port === "5500" || window.location.port === "3000"
+                    ? "http://127.0.0.1:8000"
+                    : "";
+
+                try {
+                    const sendUpload = async (base) => {
+                        let r = await fetch(`${base}/dataset/upload`, { method: "POST", body: formData });
+                        if (!r.ok && r.status === 404) {
+                            r = await fetch(`${base}/api/dataset/upload`, { method: "POST", body: formData });
+                        }
+                        return r;
+                    };
+
+                    let res;
+                    try {
+                        res = await sendUpload(baseUrl);
+                        const contentType = res.headers.get("content-type") || "";
+                        if (!res.ok || contentType.includes("text/html")) {
+                            throw new Error("Static server or 404");
+                        }
+                    } catch (initialErr) {
+                        // If opened via file://, Live Server, or running on port 8000/8001 when relative path failed, retry directly
+                        try {
+                            res = await sendUpload("http://127.0.0.1:8000");
+                            const ct = res.headers.get("content-type") || "";
+                            if (!res.ok || ct.includes("text/html")) throw new Error();
+                        } catch (_) {
+                            res = await sendUpload("http://127.0.0.1:8001");
+                        }
+                    }
+
+                    if (res.ok) {
+                        const meta = await res.json();
+                        statusBox.classList.remove("info");
+                        statusBox.classList.add("success");
+                        statusBox.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                <span><strong>Indexing Complete!</strong> Dataset '${meta.filename}' indexed successfully. Assigned ID: <code style="background: rgba(16, 185, 129, 0.2); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">${meta.dataset_id}</code></span>
+                            </div>
+                        `;
+
+                        document.getElementById("metadataPanel").classList.remove("hidden");
+                        document.getElementById("dsIdBadge").textContent = `ID: ${meta.dataset_id}`;
+                        document.getElementById("metaRowCount").textContent = meta.row_count;
+                        document.getElementById("metaColCount").textContent = meta.columns ? meta.columns.length : 0;
+                        document.getElementById("metaHasDesc").textContent = meta.has_description_column ? "YES (Vectorized)" : "NO";
+
+                        const colBox = document.getElementById("metaColumnsList");
+                        colBox.innerHTML = "";
+                        if (meta.columns) {
+                            meta.columns.forEach(c => {
+                                const span = document.createElement("span");
+                                span.className = "badge";
+                                span.style.marginRight = "8px";
+                                span.style.marginBottom = "8px";
+                                span.textContent = c;
+                                colBox.appendChild(span);
+                            });
+                        }
+                    } else {
+                        let detail = "Upload error";
+                        try {
+                            const errData = await res.json();
+                            detail = errData.detail || detail;
+                        } catch (_) {
+                            // Keep a useful message when the server returns a
+                            // proxy/static HTML error page instead of JSON.
+                        }
+                        throw new Error(detail);
+                    }
+                } catch (err) {
+                    statusBox.classList.remove("info");
+                    statusBox.classList.add("error");
+                    statusBox.textContent = `Upload failed: ${err.message}`;
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

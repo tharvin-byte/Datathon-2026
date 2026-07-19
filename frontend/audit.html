@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Courtroom Audit & Traceability</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260719_9">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- Main Full-Screen Audit Page -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h2 class="page-title">Courtroom Factual Traceability Engine</h2>
+                    <p class="page-subtitle">Every AI statement is cross-referenced against official Police FIR narratives. Unsubstantiated claims are automatically discarded.</p>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-card py-3 px-4">
+                        <span class="stat-label">Last Verification Rate</span>
+                        <span class="stat-value text-cyan" id="audit-rate-val">100.0%</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <input type="text" id="audit-search" placeholder="Search case citations (e.g. C135, Raju Gowda, Burglary)..." oninput="filterAuditTable()">
+                <div class="filter-pills">
+                    <button class="pill active" onclick="setAuditFilter('all', this)">All Claims</button>
+                    <button class="pill" onclick="setAuditFilter('verified', this)">Verified Only</button>
+                    <button class="pill" onclick="setAuditFilter('unsupported', this)">Discarded/Unsupported</button>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="audit-full-table-box">
+                <table class="audit-table full-page-table" id="audit-main-table">
+                    <thead>
+                        <tr>
+                            <th width="120">Case Source</th>
+                            <th>Status</th>
+                            <th>Factual Claim & Grounding Snippet</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-tbody">
+                        <tr>
+                            <td colspan="3" class="text-center" style="padding: 3rem;">
+                                <div class="drop-icon flex-center mb-2"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                                <p>Loading latest verification session from AI Core...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js?v=20260719_13"></script>
+    <script>
+        // Load stored audit citations when page opens
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAuditPageData();
+        });
+    </script>
+</body>
+</html>

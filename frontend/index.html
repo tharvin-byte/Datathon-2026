@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Investigative Command Center</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Vis.js for Network Graphs -->
+    <!-- Vis.js & Chart.js -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css?v=20260719_10">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- Main Split Screen Workspace -->
+        <main class="workspace">
+            <!-- Left Panel: Investigator Chat & Query Input -->
+            <section class="chat-panel">
+                <div class="panel-header">
+                    <h2>AI Investigator</h2>
+                    <span class="badge" id="agents-used-badge">Ready</span>
+                </div>
+                
+                <div class="chat-history" id="chat-history">
+                    <div class="message system-message">
+                        <div class="msg-avatar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+                        <div class="msg-content">
+                            <h3>Welcome to KSP Crime AI Command Center</h3>
+                            <p>I am your multi-agent AI co-pilot. I coordinate specialized deterministic agents (Query, Link, Trend, Risk) and verify every claim against raw police records.</p>
+                            <div class="quick-prompts">
+                                <span>Try asking:</span>
+                                <button class="prompt-chip" onclick="setQuery('Show me who is connected to the burglary in Mysuru and whether we should expect more')">Mysuru Burglary Syndicate</button>
+                                <button class="prompt-chip" onclick="setQuery('Analyze the drug trafficking and arms smuggling syndicate involving Salim Sheikh and Imran Khan')">Drug & Arms Cartel</button>
+                                <button class="prompt-chip" onclick="setQuery('Is burglary increasing in Mysuru?')">Mysuru Crime Spikes</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Box -->
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <textarea id="query-input" placeholder="Enter investigation prompt or natural language query..." rows="2"></textarea>
+                        <button id="send-btn" onclick="executeInvestigation()">
+                            <span>Launch Inquiry</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Intelligence Tabs (Network Graph, Trends, Risk & Audit) -->
+            <section class="intel-panel">
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchTab('tab-graph', this)">
+                        <span>Syndicate Map</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('tab-trends', this)">
+                        <span>Crime Spikes</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('tab-audit', this)">
+                        <span>Courtroom Audit</span>
+                    </button>
+                </div>
+
+                <div class="tabs-content">
+                    <!-- Tab 1: Network Graph -->
+                    <div id="tab-graph" class="tab-pane active">
+                        <div class="pane-controls">
+                            <span class="pane-title">Force-Directed Entity Graph</span>
+                            <div class="legend">
+                                <span class="legend-item"><span class="dot node-person"></span> Person</span>
+                                <span class="legend-item"><span class="dot node-location"></span> Location/Entity</span>
+                            </div>
+                        </div>
+                        <div id="network-graph-container" class="graph-box">
+                            <div class="empty-state">
+                                <div class="drop-icon flex-center mb-2"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg></div>
+                                <p>Execute an investigation query to generate live criminal network syndicates.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Trends & Spikes -->
+                    <div id="tab-trends" class="tab-pane">
+                        <div class="pane-controls">
+                            <span class="pane-title">Time-Series & Spike Detection</span>
+                        </div>
+                        <div class="trends-wrapper">
+                            <div id="trend-alerts-container" class="trend-alerts"></div>
+                            <div class="chart-container">
+                                <canvas id="trendsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Courtroom Audit (`audit.html` content integrated cleanly) -->
+                    <div id="tab-audit" class="tab-pane">
+                        <div class="pane-controls">
+                            <span class="pane-title">Verifier Grounding Chain & Citations</span>
+                            <div id="verification-status-badge" class="verify-badge verified">Verified: 100%</div>
+                        </div>
+                        <div id="audit-table-container" class="audit-wrapper">
+                            <div class="empty-state">
+                                <div class="drop-icon flex-center mb-2"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"></path></svg></div>
+                                <p>No verified claims yet. Run an inquiry to inspect courtroom traceability.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Custom JS & Shared Nav -->
+    <script src="nav.js?v=20260719_11"></script>
+    <script src="script.js?v=20260719_13"></script>
+</body>
+</html>

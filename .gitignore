@@ -1,0 +1,23 @@
+# Secrets & Environment Variables
+.env
+*.env
+*.pem
+*.key
+
+# Python Virtual Environments & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# VS Code settings
+.vscode/
+
+# Node modules (if applicable)
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db

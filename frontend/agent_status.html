@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Real-time LangGraph Agent Timeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION -->
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h2 class="page-title">Real-Time LangGraph Agent Timeline</h2>
+                    <p class="page-subtitle">Live WebSocket stream of specialist agent execution events across the ReAct orchestration loop.</p>
+                </div>
+                <div class="header-actions">
+                    <span id="wsStatusBadge" class="badge badge-warning">WebSocket: Connecting...</span>
+                </div>
+            </header>
+
+            <section class="content-body">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Specialist Agent Activity Log & Reasoning Timeline</h3>
+                        <button id="clearTimelineBtn" class="btn btn-secondary btn-sm">Clear Timeline</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="timelineContainer" class="timeline-box">
+                            <div class="timeline-item">
+                                <span class="timeline-time">SYSTEM READY</span>
+                                <div class="timeline-content">
+                                    <h4>LangGraph StateGraph Engine Online</h4>
+                                    <p>Waiting for query execution on session <b id="timelineSessionId">default</b>. Run an inquiry from Command Center to watch specialist agents execute in real time.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AGENT OVERVIEW CARDS -->
+                <div class="dashboard-grid mt-4">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Agent Roles & Execution Order</h3>
+                        </div>
+                        <div class="panel-body">
+                            <ul class="agent-role-list">
+                                <li><b>1. Planner Agent (Gemini Orchestrator):</b> Analyzes query intent, checks access gate, and calls specialist function tools until goal is satisfied.</li>
+                                <li><b>2. Query Agent:</b> Dual-path structured SQL + 384-dimensional MiniLM semantic similarity extraction.</li>
+                                <li><b>3. Link Agent:</b> Builds NetworkX syndicate graph via structured column matching and spaCy NER person extraction.</li>
+                                <li><b>4. Trend Agent:</b> Computes monthly spikes, demographic breakdown, and top Modus Operandi (MO) keywords.</li>
+                                <li><b>5. Risk Agent:</b> Generates weighted 0-10 threat scores with explicit breakdown of factors.</li>
+                                <li><b>6. Verifier Agent:</b> Courtroom fact-checker verifying that every AI claim is backed by raw dataset evidence.</li>
+                                <li><b>7. Composer Agent:</b> Synthesizes final response with citations and structured Section 8.2 JSON payload.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Live WebSocket Diagnostic Stream</h3>
+                        </div>
+                        <div class="panel-body">
+                            <pre id="rawWsLog" class="diagnostic-log">Listening on /ws/agent-status/...</pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let pollingTimer = null;
+        let renderedCount = 0;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const sid = localStorage.getItem("crime_session_id") || "default";
+            document.getElementById("timelineSessionId").textContent = sid;
+            startTimelinePolling(sid);
+
+            document.getElementById("clearTimelineBtn").addEventListener("click", () => {
+                document.getElementById("timelineContainer").innerHTML = "";
+                document.getElementById("rawWsLog").textContent = "Timeline cleared.";
+                renderedCount = 0;
+            });
+        });
+
+        async function startTimelinePolling(sessionId) {
+            const badge = document.getElementById("wsStatusBadge");
+            const rawLog = document.getElementById("rawWsLog");
+
+            badge.className = "badge badge-success";
+            badge.textContent = "Status: Live Polling Active";
+            rawLog.textContent = `[${new Date().toLocaleTimeString()}] HTTP Polling initialized for session: ${sessionId}`;
+
+            async function poll() {
+                try {
+                    const res = await fetch(`/session/${encodeURIComponent(sessionId)}/timeline`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const events = data.events || [];
+                        if (events.length > renderedCount) {
+                            for (let i = renderedCount; i < events.length; i++) {
+                                const ev = events[i];
+                                appendTimelineEvent(ev);
+                                rawLog.textContent += `\n[${new Date().toLocaleTimeString()}] ${JSON.stringify(ev)}`;
+                                rawLog.scrollTop = rawLog.scrollHeight;
+                            }
+                            renderedCount = events.length;
+                        }
+                    }
+                } catch (e) {
+                    // Silent retry on next interval
+                }
+            }
+
+            // Poll immediately and every 1.5 seconds
+            await poll();
+            pollingTimer = setInterval(poll, 1500);
+        }
+
+        function appendTimelineEvent(data) {
+            const timeline = document.getElementById("timelineContainer");
+            const item = document.createElement("div");
+            item.className = "timeline-item";
+            
+            const time = new Date().toLocaleTimeString();
+            let title = data.event || "Event";
+            let desc = JSON.stringify(data);
+            
+            if (data.event === "planner_thinking") {
+                title = "Planner Agent Activated";
+                desc = "Orchestrator evaluating query goals and deciding which specialist agents to invoke.";
+            } else if (data.event === "agent_completed") {
+                title = `Specialist Agent Completed: ${data.agent}`;
+                desc = data.summary || `Agent ${data.agent} finished writing results to blackboard.`;
+            } else if (data.event === "verifier_running") {
+                title = "Verifier Agent Auditing Claims";
+                desc = "Cross-referencing draft response statements against raw case records and graph basis tags.";
+            } else if (data.event === "verifier_result") {
+                title = "Audit Complete";
+                desc = `Flagged ${data.unsupported_claims || 0} unsupported claims.`;
+            } else if (data.event === "composer_running") {
+                title = "Composer Agent Synthesizing Output";
+                desc = "Formatting final Section 8.2 JSON contract with citations and graph data.";
+            } else if (data.event === "done") {
+                title = "Inquiry Completed";
+                desc = `Pipeline execution finished. Query ID assigned: ${data.query_id}`;
+            }
+
+            item.innerHTML = `
+                <span class="timeline-time">${time}</span>
+                <div class="timeline-content">
+                    <h4>${title}</h4>
+                    <p>${desc}</p>
+                </div>
+            `;
+            timeline.insertBefore(item, timeline.firstChild);
+        }
+    </script>
+</body>
+</html>

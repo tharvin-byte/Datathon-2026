@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Investigation Session History & PDF Export</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION -->
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h2 class="page-title">Session History & Investigation Dossier Export</h2>
+                    <p class="page-subtitle">Review active and historical sessions, inspect blackboard query states, and download formatted PDF/TXT reports.</p>
+                </div>
+                <div class="header-actions">
+                    <button id="refreshSessionsBtn" class="btn btn-secondary flex-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg> Refresh Sessions</button>
+                </div>
+            </header>
+
+            <section class="content-body">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">Active & Historical Investigation Sessions</h3>
+                        <span class="badge">Blackboard State Archives</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Session ID</th>
+                                        <th>Officer Role</th>
+                                        <th>Jurisdiction</th>
+                                        <th>Queries Run</th>
+                                        <th>Last Inquiry Summary</th>
+                                        <th>Created Date</th>
+                                        <th>Actions & Export</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionsTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">Loading active sessions from session store...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSessionsList();
+            document.getElementById("refreshSessionsBtn").addEventListener("click", loadSessionsList);
+        });
+
+        async function loadSessionsList() {
+            const tbody = document.getElementById("sessionsTableBody");
+            try {
+                const res = await fetch("/sessions");
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = data.sessions || [];
+                    tbody.innerHTML = "";
+                    if (list.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4">No sessions found in store.</td></tr>`;
+                        return;
+                    }
+                    list.forEach(sess => {
+                        const sid = encodeURIComponent(sess.session_id || "");
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td><b class="text-cyan">${sess.session_id}</b></td>
+                            <td><span class="badge">${sess.role.toUpperCase()}</span></td>
+                            <td>${sess.district}</td>
+                            <td>${sess.query_count || 0}</td>
+                            <td><i>"${sess.summary || 'N/A'}"</i></td>
+                            <td>${sess.date ? new Date(sess.date).toLocaleString() : 'Recent'}</td>
+                            <td>
+                                <button onclick="switchSession('${sess.session_id}', '${sess.role}', '${sess.district}')" class="btn btn-primary btn-sm">Switch To</button>
+                                <a href="/session/${sid}/export" target="_blank" class="btn btn-secondary btn-sm ml-2">Download PDF/TXT Report</a>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-danger">Error loading sessions: ${err.message}</td></tr>`;
+            }
+        }
+
+        function switchSession(sid, role, district) {
+            localStorage.setItem("crime_session_id", sid);
+            localStorage.setItem("crime_role", role);
+            localStorage.setItem("crime_district", district);
+            loadSessionMeta();
+            alert(`Switched active session to: ${sid} (${role.toUpperCase()}, ${district})`);
+            window.location.href = "index.html";
+        }
+    </script>
+</body>
+</html>

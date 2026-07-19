@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Database Records & FIR Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260719_9">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- Main Full-Screen Database Page -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h2 class="page-title">Official Police FIR Repository</h2>
+                    <p class="page-subtitle">Inspect, filter, and review the raw structured table fields and unstructured natural language narratives.</p>
+                </div>
+                <div class="header-stats flex-center gap-3">
+                    <div class="form-group mb-0">
+                        <select id="db-select" class="form-select" onchange="fetchDatabaseRecords()">
+                            <option value="complex">Complex Syndicate Data (50 Records)</option>
+                            <option value="sample">Sample Data (15 Records)</option>
+                        </select>
+                    </div>
+                    <div class="stat-card py-3 px-4 ml-2">
+                        <span class="stat-label">Total Loaded FIRs</span>
+                        <span class="stat-value text-cyan" id="db-total-count">0</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <input type="text" id="db-search" placeholder="Search across all columns (Case ID, District, Accused, Crime Type, Description)..." oninput="filterDatabaseTable()">
+            </div>
+
+            <!-- Table -->
+            <div class="audit-full-table-box">
+                <table class="audit-table full-page-table" id="db-main-table">
+                    <thead>
+                        <tr>
+                            <th width="80">Case ID</th>
+                            <th width="110">Date</th>
+                            <th width="120">District</th>
+                            <th width="140">Crime Type</th>
+                            <th width="150">Accused Name</th>
+                            <th width="120">Co-Accused</th>
+                            <th>Narrative Description (Free-Text FIR)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="db-tbody">
+                        <tr>
+                            <td colspan="7" class="text-center" style="padding: 3rem;">
+                                <div class="drop-icon flex-center mb-2"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                                <p>Loading records from backend database...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="nav.js"></script>
+    <script src="script.js?v=20260719_13"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchDatabaseRecords();
+        });
+    </script>
+</body>
+</html>

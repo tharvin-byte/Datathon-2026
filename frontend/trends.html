@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Crime Spikes & Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css?v=20260719_10">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+    <div class="app-container">
+        <!-- LEFT SIDEBAR NAVIGATION (Injected by nav.js) -->
+        <aside id="sidebar-container" class="sidebar"></aside>
+
+        <!-- Main Full-Screen Trends Page -->
+        <main class="main-content page-container">
+            <header class="page-header">
+                <div>
+                    <h2 class="page-title">Time-Series Spikes & Tactical Analytics</h2>
+                    <p class="page-desc">Real-time anomaly detection comparing current incident frequency against 3-period AI rolling baselines, integrated with Modus Operandi (MO) clustering and district hotspot forecasting.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" onclick="loadTrendsPageData()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21v-5h5"></path></svg> Refresh Analytics</button>
+                </div>
+            </header>
+
+            <!-- 1. Executive Intelligence KPI Ribbon -->
+            <div class="kpi-ribbon" id="trends-kpi-ribbon">
+                <div class="kpi-box">
+                    <span class="kpi-label">Total Monitored Volume</span>
+                    <span class="kpi-value" id="kpi-total-volume">0 <small>cases</small></span>
+                    <span class="kpi-subtext" id="kpi-volume-subtext"><span class="kpi-dot cyan"></span>Across 0 monitored jurisdictions</span>
+                </div>
+                <div class="kpi-box critical">
+                    <span class="kpi-label">Active Critical Spikes</span>
+                    <span class="kpi-value" id="kpi-critical-spikes" style="color: var(--status-high);">0 <small>districts</small></span>
+                    <span class="kpi-subtext" id="kpi-spikes-subtext"><span class="kpi-dot red"></span>No critical spikes active</span>
+                </div>
+                <div class="kpi-box">
+                    <span class="kpi-label">Primary MO Signature</span>
+                    <span class="kpi-value" id="kpi-top-mo" style="font-size: 1.1rem; color: #f8fafc;">"No Active MO"</span>
+                    <span class="kpi-subtext" id="kpi-mo-subtext"><span class="kpi-dot amber"></span>No patterns extracted yet</span>
+                </div>
+                <div class="kpi-box warning">
+                    <span class="kpi-label">AI Threat Forecast</span>
+                    <span class="kpi-value" id="kpi-forecast" style="color: #34d399;">NORMAL</span>
+                    <span class="kpi-subtext" id="kpi-forecast-subtext"><span class="kpi-dot green"></span>Stable baseline across jurisdictions</span>
+                </div>
+            </div>
+
+            <!-- 2. Interactive Jurisdiction Filter Bar -->
+            <div class="filter-bar">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Jurisdiction Filter:</span>
+                    <div class="filter-pills" id="trends-filter-pills">
+                        <button class="pill active" onclick="filterTrendsByJurisdiction('all', this)">All Districts (0)</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Dual-Chart Operations Grid -->
+            <div class="trends-dual-grid">
+                <div class="chart-panel-box main-chart">
+                    <div class="pane-controls">
+                        <span class="pane-title">Time-Series & Volume vs Baseline Overlay</span>
+                        <div class="legend">
+                            <span class="legend-item"><span class="dot" style="background:#ef4444;"></span> Spike Volume</span>
+                            <span class="legend-item"><span class="dot" style="background:#00f2fe;"></span> Stable Volume</span>
+                            <span class="legend-item"><span class="dot" style="background:#f59e0b;"></span> Rolling Baseline</span>
+                        </div>
+                    </div>
+                    <div class="canvas-wrapper">
+                        <canvas id="fullTrendsChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-panel-box side-chart">
+                    <div class="pane-controls">
+                        <span class="pane-title">District Concentration Share</span>
+                    </div>
+                    <div class="canvas-wrapper doughnut-wrapper">
+                        <canvas id="hotspotShareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Tactical Crime Spike Dossiers Grid -->
+            <div style="margin-top: 0.5rem;">
+                <div class="pane-controls" style="margin-bottom: 0.8rem;">
+                    <span class="pane-title">Tactical Investigation Dossiers & MO Breakdown</span>
+                    <span class="snippet-box" id="dossier-count-label">Showing all 5 monitored categories</span>
+                </div>
+                <div class="trend-alerts full-page-alerts" id="full-trends-alerts">
+                    <div class="alert-card" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+                        <h4 style="color: var(--status-low);">Loading Spike Assessment...</h4>
+                        <p>Fetching latest trend calculations from AI Core.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="nav.js?v=20260719_11"></script>
+    <script src="script.js?v=20260719_14"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTrendsPageData();
+        });
+    </script>
+</body>
+</html>

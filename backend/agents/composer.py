@@ -29,6 +29,7 @@ DEPENDENCY: Runs LAST — after verifier has checked everything.
 import json
 import os
 import re
+import time
 import uuid
 from datetime import datetime
 
@@ -235,10 +236,11 @@ RULES & STANDARDS:
 
 def compose_with_gemini(state: dict, language: str) -> str:
     """Use Gemini to write a natural, comprehensive intelligence briefing."""
-    if not genai or not os.environ.get("GEMINI_API_KEY"):
+    _composer_key = os.environ.get("GEMINI_API_KEY_COMPOSER") or os.environ.get("GEMINI_API_KEY")
+    if not genai or not _composer_key:
         return compose_template_answer(state, language)
 
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    genai.configure(api_key=_composer_key)
 
     language_name = "Kannada" if language == "kn" else "English"
     prompt_text = COMPOSER_PROMPT.format(
@@ -247,7 +249,7 @@ def compose_with_gemini(state: dict, language: str) -> str:
     )
 
     model = genai.GenerativeModel(
-        "gemini-2.0-flash",
+        "gemini-3.1-flash-lite",
         system_instruction=prompt_text,
     )
 
@@ -307,12 +309,44 @@ def compose_with_gemini(state: dict, language: str) -> str:
         f"{json.dumps(findings_summary, indent=2, default=str)}"
     )
 
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        print(f"[Composer] Gemini failed: {e}")
-        return compose_template_answer(state, language)
+    # Retry with exponential backoff for 429 rate-limit errors.
+    # Planner + Verifier calls may exhaust free-tier RPM quota before
+    # Composer runs. Instead of silently falling to template, we wait
+    # and retry. Only fall back if all retries are exhausted or the
+    # error is NOT a rate-limit (e.g. invalid key, network error).
+    max_retries = 3
+    retry_waits = [15, 30, 45]  # seconds to wait before each retry
+
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        except Exception as e:
+            err_str = str(e).lower()
+            is_rate_limit = (
+                "429" in err_str
+                or "quota" in err_str
+                or "resource_exhausted" in err_str
+                or "rate" in err_str
+            )
+
+            if is_rate_limit and attempt < max_retries - 1:
+                wait = retry_waits[attempt]
+                print(
+                    f"[Composer] Rate limit hit (attempt {attempt + 1}/{max_retries}). "
+                    f"Waiting {wait}s then retrying..."
+                )
+                time.sleep(wait)
+                continue
+            else:
+                if is_rate_limit:
+                    print(
+                        f"[Composer] All {max_retries} retries exhausted (rate limit). "
+                        f"Falling back to template."
+                    )
+                else:
+                    print(f"[Composer] Gemini failed (non-rate-limit): {e}")
+                return compose_template_answer(state, language)
 
 
 # ===================================================================
@@ -436,10 +470,13 @@ def composer_agent(state: dict) -> dict:
     # --- Step 2: Compose the answer ---
     # Use Gemini if key is present for rich, natural language report generation
     # across both English and Kannada. If unavailable, use the comprehensive dossier template.
-    if GEMINI_AVAILABLE and os.environ.get("GEMINI_API_KEY"):
+    if GEMINI_AVAILABLE and (os.environ.get("GEMINI_API_KEY_COMPOSER") or os.environ.get("GEMINI_API_KEY")):
         print(f"[Composer] Gemini API key detected - using Gemini for comprehensive intelligence dossier ({language_name})...")
         import time
-        time.sleep(1)  # Rate-limit protection
+        # Wait 5s so Planner + Verifier Gemini calls clear the RPM window
+        # before Composer adds its call. (Was 1s — too short.)
+        print("[Composer] Waiting 5s for Planner/Verifier quota to clear...")
+        time.sleep(5)
         answer_text = compose_with_gemini(state, language)
     else:
         print(f"[Composer] Using comprehensive intelligence dossier template ({language_name})...")

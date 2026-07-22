@@ -301,10 +301,11 @@ def planner_agent(state: dict) -> dict:
     max_iterations = 3
 
     # --- GEMINI-POWERED PATH ---
-    if GEMINI_AVAILABLE and os.environ.get("GEMINI_API_KEY"):
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    if GEMINI_AVAILABLE and (os.environ.get("GEMINI_API_KEY_PLANNER") or os.environ.get("GEMINI_API_KEY")):
+        _planner_key = os.environ.get("GEMINI_API_KEY_PLANNER") or os.environ["GEMINI_API_KEY"]
+        genai.configure(api_key=_planner_key)
         model = genai.GenerativeModel(
-            "gemini-2.0-flash",
+            "gemini-3.1-flash-lite",
             system_instruction=SYSTEM_PROMPT,
         )
 

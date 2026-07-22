@@ -266,9 +266,10 @@ Reply with a JSON array of objects:
 
 def verify_with_gemini(claims: list[dict], records: list[dict]) -> list[dict]:
     """Use Gemini to semantically verify claims against records."""
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    _verifier_key = os.environ.get("GEMINI_API_KEY_VERIFIER") or os.environ.get("GEMINI_API_KEY")
+    genai.configure(api_key=_verifier_key)
     model = genai.GenerativeModel(
-        "gemini-2.0-flash",
+        "gemini-3.1-flash-lite",
         system_instruction=VERIFIER_PROMPT,
     )
 
@@ -395,7 +396,7 @@ def verifier_agent(state: dict) -> dict:
     verified_claims = []
     unsupported_claims = []
 
-    if GEMINI_AVAILABLE and os.environ.get("GEMINI_API_KEY"):
+    if GEMINI_AVAILABLE and (os.environ.get("GEMINI_API_KEY_VERIFIER") or os.environ.get("GEMINI_API_KEY")):
         # Gemini-powered semantic verification
         print("[Verifier] Using Gemini for semantic verification...")
         # Option 5: 3-second delay before Gemini call to avoid

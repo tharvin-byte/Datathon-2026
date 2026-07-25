@@ -12,21 +12,36 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
-def embed_texts(texts: list[str]) -> np.ndarray:
+_ACTIVE_VECTORIZER = None
+
+def embed_texts(texts: list[str], fit: bool = False) -> np.ndarray:
     """Encode a list of texts into normalized TF-IDF vectors."""
+    global _ACTIVE_VECTORIZER
     if not texts or all(len(str(t).strip()) == 0 for t in texts):
-        return np.zeros((len(texts), 1))
+        n_cols = _ACTIVE_VECTORIZER.transform(["test"]).shape[1] if _ACTIVE_VECTORIZER else 1
+        return np.zeros((len(texts), n_cols))
+    
     texts_clean = [str(t) for t in texts]
-    vectorizer = TfidfVectorizer(stop_words='english', max_features=500)
-    try:
-        tfidf_matrix = vectorizer.fit_transform(texts_clean)
-        return normalize(tfidf_matrix).toarray()
-    except Exception:
-        return np.zeros((len(texts), 1))
+    
+    if fit or _ACTIVE_VECTORIZER is None:
+        _ACTIVE_VECTORIZER = TfidfVectorizer(stop_words='english', max_features=1000)
+        try:
+            tfidf_matrix = _ACTIVE_VECTORIZER.fit_transform(texts_clean)
+            return normalize(tfidf_matrix).toarray()
+        except Exception:
+            _ACTIVE_VECTORIZER = None
+            return np.zeros((len(texts), 1))
+    else:
+        try:
+            tfidf_matrix = _ACTIVE_VECTORIZER.transform(texts_clean)
+            return normalize(tfidf_matrix).toarray()
+        except Exception:
+            n_cols = _ACTIVE_VECTORIZER.transform(["test"]).shape[1] if _ACTIVE_VECTORIZER else 1
+            return np.zeros((len(texts), n_cols))
 
 class TFIDFEmbedder:
     def encode(self, texts, show_progress_bar=False):
-        return embed_texts(texts)
+        return embed_texts(texts, fit=False)
 
 def get_embed_model():
     """Backward-compatible helper returning a lightweight TF-IDF embedder."""
@@ -52,7 +67,7 @@ def load_dataset(csv_path: str) -> dict:
     df.to_sql("cases", conn, index=False, if_exists="replace")
 
     descriptions = df["description"].fillna("").tolist() if "description" in df.columns else [""] * len(df)
-    desc_embeddings = embed_texts(descriptions)
+    desc_embeddings = embed_texts(descriptions, fit=True)
     known_names = df["accused_name"].dropna().unique().tolist() if "accused_name" in df.columns else []
 
     return {

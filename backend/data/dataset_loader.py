@@ -2,36 +2,30 @@
 DATASET LOADER — Crime AI Data Module
 =====================================
 PURPOSE: Loads uploaded CSV datasets into pandas DataFrame, SQLite table,
-and builds SentenceTransformer embeddings for semantic similarity search.
+and builds TF-IDF vector representations for instant semantic similarity search.
 """
 
 import os
 import sqlite3
 import pandas as pd
 import numpy as np
-from sentence_transformers import SentenceTransformer
-
-# Lazy-load the embedding model to ensure instant server startup
-_EMBED_MODEL = None
-
-def get_embed_model():
-    global _EMBED_MODEL
-    if _EMBED_MODEL is None:
-        _EMBED_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
-    return _EMBED_MODEL
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import normalize
 
 def embed_texts(texts: list[str]) -> np.ndarray:
-    """Encode a list of texts into 384-dim vectors using MiniLM."""
-    return get_embed_model().encode(texts, show_progress_bar=False)
+    """Encode a list of texts into normalized TF-IDF vectors."""
+    if not texts or all(len(t.strip()) == 0 for t in texts):
+        return np.zeros((len(texts), 1))
+    vectorizer = TfidfVectorizer(stop_words='english', max_features=500)
+    tfidf_matrix = vectorizer.fit_transform(texts)
+    return normalize(tfidf_matrix).toarray()
 
 def load_dataset(csv_path: str) -> dict:
     """
     Load the CSV into:
       1. An in-memory SQLite database (for structured queries)
       2. A pandas DataFrame (for easy row access)
-      3. Pre-computed description embeddings (for semantic search)
-    
-    Returns a dict with all three, plus known names for matching.
+      3. Pre-computed description TF-IDF embeddings (for fast semantic search)
     """
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"Dataset CSV not found at {csv_path}")

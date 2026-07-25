@@ -14,11 +14,23 @@ from sklearn.preprocessing import normalize
 
 def embed_texts(texts: list[str]) -> np.ndarray:
     """Encode a list of texts into normalized TF-IDF vectors."""
-    if not texts or all(len(t.strip()) == 0 for t in texts):
+    if not texts or all(len(str(t).strip()) == 0 for t in texts):
         return np.zeros((len(texts), 1))
+    texts_clean = [str(t) for t in texts]
     vectorizer = TfidfVectorizer(stop_words='english', max_features=500)
-    tfidf_matrix = vectorizer.fit_transform(texts)
-    return normalize(tfidf_matrix).toarray()
+    try:
+        tfidf_matrix = vectorizer.fit_transform(texts_clean)
+        return normalize(tfidf_matrix).toarray()
+    except Exception:
+        return np.zeros((len(texts), 1))
+
+class TFIDFEmbedder:
+    def encode(self, texts, show_progress_bar=False):
+        return embed_texts(texts)
+
+def get_embed_model():
+    """Backward-compatible helper returning a lightweight TF-IDF embedder."""
+    return TFIDFEmbedder()
 
 def load_dataset(csv_path: str) -> dict:
     """

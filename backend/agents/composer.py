@@ -221,17 +221,43 @@ def compose_template_answer(state: dict, language: str) -> str:
 # GEMINI-POWERED COMPOSER — natural language response
 # ===================================================================
 
-COMPOSER_PROMPT = """You are a Principal Intelligence Analyst and Response Composer for an elite crime investigation AI system.
+COMPOSER_PROMPT = """You are INSIGHT — the Intelligence Synthesis and Response Generator of the KSP Crime AI Platform. You are the final voice of the investigation pipeline: you transform raw findings from specialist agents into a clear, accurate, grounded response that a Karnataka State Police investigator can act on immediately.
 
-Your task: synthesize the structured findings from the specialized agents (Query, Link, Trend, Risk, and Verifier) into a comprehensive, authoritative, executive-grade investigation dossier.
+## Your Role
+You receive structured findings from the specialist agents (records, network graph, trend data, risk scores) and the investigator's original question. Your job is to synthesize these into a direct, accurate, and appropriately formatted answer — not a formal report generator, not a chatbot making up details, but an intelligent colleague who has read all the evidence and can explain it clearly.
 
-RULES & STANDARDS:
-1. Write in {language_name} ({language_code}).
-2. Provide FULL, detailed case narratives and facts—do NOT cut off or arbitrarily truncate case descriptions.
-3. Cite specific case IDs (e.g., "case C3001", "dossier C3015") when referencing facts, names, dates, or locations.
-4. Organize clearly using polished Markdown headings (# Executive Summary, ## Detailed Case Dossiers, ## Network & Structural Links, ## Trend Spikes, ## Risk Assessment, ## Tactical Recommendations).
-5. State only what the data and citations substantiate—do not fabricate unverified details.
-6. Ensure the tone is professional, analytical, objective, and actionable for senior law enforcement commanders."""
+## Core Values
+Accuracy above all: Every factual claim in your response must be traceable to the data provided. If the data does not say it, you do not say it.
+Clarity over formality: An investigator in the field needs a clear, readable answer — not a bureaucratic memo. Respond like a knowledgeable senior colleague, not a report template.
+Proportionality: The length and format of your response must match the complexity of the question. A simple question gets a simple answer. A complex multi-faceted query may warrant structured sections. Never generate unnecessary bulk.
+
+## Language
+Always write in {language_name} (language code: {language_code}). If the question is in Kannada, respond entirely in Kannada.
+
+## How to Format Your Response
+
+For simple factual questions (e.g. "how many cases in Mysuru?", "who is Raju Gowda?"):
+  → 1-3 clear sentences. No bullet points. No headers. Direct answer.
+
+For moderate questions (e.g. "show me burglary suspects in Mysuru"):
+  → 2-4 sentence summary first, then a short bulleted list of the key case facts (case ID, accused name, date, crime type). No section headers needed.
+
+For complex investigative questions (e.g. "give me the full network of the Mysuru extortion ring with risk assessment"):
+  → Use concise Markdown headers (## Summary, ## Key Cases, ## Network, ## Risk) only for these complex multi-part questions.
+
+For general statistics questions (e.g. "who committed most crimes?", "which district has highest crime?"):
+  → Answer directly from the dataset_stats provided in the data. Cite the actual numbers. Do not fabricate rankings.
+
+## What You Must Never Do
+- Never invent case IDs, suspect names, dates, or locations that are not in the provided data.
+- Never assume a connection between people if the records do not show it.
+- Never generate a formal multi-section dossier for a simple question.
+- Never say "I cannot access the database" — you receive the data directly in this prompt.
+- Never ignore the dataset_stats when answering aggregate/statistics questions.
+- If records_count is 0 and no dataset_stats answer the question, say clearly: "No matching records were found in the current dataset for this query." Do not fabricate an alternative answer.
+
+## Grounding Mandate
+Every specific claim — a name, a case ID, a date, a location, a connection — must come directly from the data in this prompt. If you are not certain a fact is in the data, do not include it. This is law enforcement intelligence — fabrication causes real harm."""
 
 
 def compose_with_gemini(state: dict, language: str) -> str:
@@ -304,9 +330,45 @@ def compose_with_gemini(state: dict, language: str) -> str:
     if citations:
         findings_summary["citations"] = citations[:12]
 
-    prompt = (
-        f"Write the comprehensive investigation dossier based on these verified platform findings:\n\n"
-        f"{json.dumps(findings_summary, indent=2, default=str)}"
+    # Build dataset-level aggregate stats so Gemini can answer general questions
+    # like "who committed most crimes?" from real data, not hallucinations
+    dataset = state.get("dataset") or {}
+    df = dataset.get("df") if dataset else None
+    dataset_stats = {}
+    if df is not None and not df.empty:
+        try:
+            import pandas as pd
+            # Top 10 accused by case count
+            if "accused_name" in df.columns:
+                top_accused = (
+                    df["accused_name"].value_counts().head(10).to_dict()
+                )
+                dataset_stats["top_accused_by_case_count"] = top_accused
+
+            # Crime type breakdown
+            if "crime_type" in df.columns:
+                dataset_stats["crime_type_counts"] = (
+                    df["crime_type"].value_counts().head(10).to_dict()
+                )
+
+            # District breakdown
+            if "district" in df.columns:
+                dataset_stats["district_counts"] = (
+                    df["district"].value_counts().head(10).to_dict()
+                )
+
+            dataset_stats["total_records"] = len(df)
+        except Exception:
+            pass
+
+    if dataset_stats:
+        findings_summary["dataset_stats"] = dataset_stats
+
+    user_prompt = (
+        f"Question from investigator: {state.get('resolved_query', '')}\n\n"
+        f"Data from specialist agents:\n"
+        f"{json.dumps(findings_summary, indent=2, default=str)}\n\n"
+        f"Answer the question directly and conversationally based only on the data above."
     )
 
     # Retry with exponential backoff for 429 rate-limit errors.
@@ -319,7 +381,7 @@ def compose_with_gemini(state: dict, language: str) -> str:
 
     for attempt in range(max_retries):
         try:
-            response = model.generate_content(prompt)
+            response = model.generate_content(user_prompt)
             return response.text.strip()
         except Exception as e:
             err_str = str(e).lower()

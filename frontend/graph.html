@@ -29,14 +29,17 @@
                 </div>
             </header>
 
-            <div class="graph-top-bar mt-2">
+            <div class="graph-top-bar mt-2" style="margin-bottom: 0.8rem;">
                 <div class="legend">
-                    <span class="legend-item"><span class="dot node-person"></span> Person / Accused</span>
-                    <span class="legend-item"><span class="dot node-location"></span> Location / Entity</span>
+                    <span class="legend-item"><span class="dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.7)"></span> Accused</span>
+                    <span class="legend-item"><span class="dot" style="background:#06b6d4;box-shadow:0 0 6px rgba(6,182,212,0.7)"></span> Victim</span>
+                    <span class="legend-item"><span class="dot" style="background:#8b5cf6;box-shadow:0 0 6px rgba(139,92,246,0.7)"></span> Person</span>
+                    <span class="legend-item"><span class="dot" style="background:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,0.6);border-radius:2px;transform:rotate(45deg)"></span> Location</span>
+                    <span class="legend-item"><span class="dot" style="background:#6366f1;box-shadow:0 0 6px rgba(99,102,241,0.6);border-radius:2px"></span> Crime</span>
                 </div>
             </div>
 
-            <div id="full-graph-container" class="full-screen-graph mt-3">
+            <div id="full-graph-container" class="full-screen-graph graph-box mt-3" style="min-height: calc(100vh - 180px); flex: 1;">
                 <div class="empty-state text-center py-5">
                     <div class="flex-center mb-3"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="1.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg></div>
                     <h4 class="mt-2 text-cyan">No Syndicate Connections Active</h4>

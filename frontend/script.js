@@ -12,27 +12,32 @@ let hotspotShareChartInstance = null;
 // ==========================================================================
 (function initPanelResize() {
     document.addEventListener('DOMContentLoaded', () => {
-        const workspace  = document.getElementById('workspace');
-        const handle     = document.getElementById('panel-resize-handle');
+        const workspace = document.getElementById('workspace');
+        const handle = document.getElementById('panel-resize-handle');
         if (!workspace || !handle) return;
 
-        // Restore saved width from previous session
+        // Restore saved width from previous session safely
         const savedWidth = localStorage.getItem('chatPanelWidth');
-        if (savedWidth) workspace.style.setProperty('--chat-panel-width', savedWidth);
+        if (savedWidth) {
+            const parsed = parseInt(savedWidth, 10);
+            const minW = 280;
+            const maxW = Math.floor(window.innerWidth * 0.65);
+            if (!isNaN(parsed) && parsed >= minW && parsed <= maxW) {
+                workspace.style.setProperty('--chat-panel-width', parsed + 'px');
+            } else {
+                localStorage.removeItem('chatPanelWidth');
+            }
+        }
 
         let isDragging = false;
-        let startX     = 0;
+        let startX = 0;
         let startWidth = 0;
 
         handle.addEventListener('mousedown', (e) => {
             isDragging = true;
-            startX     = e.clientX;
-            startWidth = workspace.getBoundingClientRect().left
-                       ? parseInt(getComputedStyle(workspace).getPropertyValue('--chat-panel-width') || '420', 10)
-                       : 420;
-            // Measure actual current width from the chat panel itself
+            startX = e.clientX;
             const chatPanel = document.getElementById('chat-panel');
-            if (chatPanel) startWidth = chatPanel.getBoundingClientRect().width;
+            startWidth = chatPanel ? chatPanel.getBoundingClientRect().width : 420;
 
             handle.classList.add('dragging');
             document.body.style.cursor = 'col-resize';
@@ -42,9 +47,9 @@ let hotspotShareChartInstance = null;
 
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const delta    = e.clientX - startX;
+            const delta = e.clientX - startX;
             const minWidth = 280;
-            const maxWidth = Math.floor(window.innerWidth * 0.70);
+            const maxWidth = Math.floor(window.innerWidth * 0.65);
             const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
             workspace.style.setProperty('--chat-panel-width', newWidth + 'px');
         });
@@ -55,15 +60,19 @@ let hotspotShareChartInstance = null;
             handle.classList.remove('dragging');
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            // Persist the chosen width so it survives refresh
             const w = workspace.style.getPropertyValue('--chat-panel-width');
             if (w) localStorage.setItem('chatPanelWidth', w);
-            // Redraw chart/graph if visible
+            if (networkInstance) networkInstance.redraw();
+            if (trendsChartInstance) trendsChartInstance.resize();
+        });
+
+        window.addEventListener('resize', () => {
             if (networkInstance) networkInstance.redraw();
             if (trendsChartInstance) trendsChartInstance.resize();
         });
     });
 })();
+
 
 
 // 3. Trends Page Loader (`trends.html`)
@@ -72,7 +81,7 @@ function loadTrendsPageData() {
     localStorage.removeItem('latestCrimeData');
     let data = null;
     const stored = sessionStorage.getItem('latestCrimeData');
-    
+
     if (stored) {
         try {
             data = JSON.parse(stored);
@@ -134,8 +143,8 @@ function loadTrendsPageData() {
         }
     }
     if (document.getElementById('kpi-forecast-subtext')) {
-        const forecastSub = topSpike && topSpike.pct_change 
-            ? `+${topSpike.pct_change}% projected surge in ${topSpike.crime_type || 'Crime'}` 
+        const forecastSub = topSpike && topSpike.pct_change
+            ? `+${topSpike.pct_change}% projected surge in ${topSpike.crime_type || 'Crime'}`
             : `Stable baseline across jurisdictions`;
         document.getElementById('kpi-forecast-subtext').innerHTML = `<span class="kpi-dot ${spikes.length > 0 ? 'amber' : 'green'}"></span>${forecastSub}`;
     }
@@ -186,7 +195,7 @@ function renderTrendsDossiers(findings) {
         const dotColor = isSpike ? '#f87171' : '#34d399';
         const statusText = isSpike ? `CRITICAL SURGE (+${f.pct_change ?? '25+'}% vs baseline)` : `STABLE BASELINE (${f.trend_direction || 'Stable'})`;
         const badgeStyle = isSpike ? 'background: rgba(248, 113, 113, 0.15); border: 1px solid #ef4444; color: #fca5a5;' : 'background: rgba(16, 185, 129, 0.15); border: 1px solid #059669; color: #34d399;';
-        
+
         // Gauge bar percentage
         const caseCount = f.case_count ?? 0;
         const rollingAvg = f.rolling_avg ?? caseCount;
@@ -194,11 +203,11 @@ function renderTrendsDossiers(findings) {
         const currentBarWidth = Math.min(Math.round((caseCount / maxScale) * 100), 100);
         const baselineBarWidth = Math.min(Math.round((rollingAvg / maxScale) * 100), 100);
 
-        const moList = (f.mo_patterns || []).length > 0 
-            ? (f.mo_patterns || []).map(mo => `<span class="mo-pill">${mo}</span>`).join(' ') 
+        const moList = (f.mo_patterns || []).length > 0
+            ? (f.mo_patterns || []).map(mo => `<span class="mo-pill">${mo}</span>`).join(' ')
             : '<span class="mo-pill">Standard Historical Pattern</span>';
 
-        const tacticalRecommendation = isSpike 
+        const tacticalRecommendation = isSpike
             ? `Immediate tactical alert: Deploy night patrol checkpoints around high-risk zones in ${f.location} and inspect linked repeat offenders.`
             : `Routine baseline monitoring: Continue periodic surveillance of ${f.crime_type} networks across ${f.location}.`;
 
@@ -290,7 +299,7 @@ function renderTrendsBarLineChart(findings) {
                 legend: { labels: { color: '#f8fafc', font: { size: 13 } } },
                 tooltip: {
                     callbacks: {
-                        afterLabel: function(context) {
+                        afterLabel: function (context) {
                             if (context.datasetIndex === 1 && findings[context.dataIndex]) {
                                 const t = findings[context.dataIndex];
                                 return t.pct_change ? `Surge Change: ${t.pct_change > 0 ? '+' : ''}${t.pct_change}% vs baseline` : '';
@@ -346,7 +355,7 @@ function renderHotspotShareChart(hotspots) {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `${context.label}: ${context.raw}% concentration share`;
                         }
                     }
@@ -379,10 +388,10 @@ function filterTrendsByJurisdiction(jurisdiction, btnElement) {
 function switchTab(tabId, btnElement) {
     document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
+
     document.getElementById(tabId).classList.add('active');
     if (btnElement) btnElement.classList.add('active');
-    
+
     // Resize chart/graph if visible
     if (tabId === 'tab-graph' && networkInstance) {
         networkInstance.redraw();
@@ -500,12 +509,12 @@ async function executeInvestigation() {
 // Each agent type gets its own color-coded pill with staggered fade-in animation.
 // ==========================================================================
 const AGENT_META = {
-    planner_agent:  { cssClass: 'agent-planner',  label: 'Planner Agent'   },
-    query_agent:    { cssClass: 'agent-query',    label: 'Query Agent'     },
-    link_agent:     { cssClass: 'agent-link',     label: 'Link Agent'      },
-    trend_agent:    { cssClass: 'agent-trend',    label: 'Trend Agent'     },
-    risk_agent:     { cssClass: 'agent-risk',     label: 'Risk Agent'      },
-    verifier_agent: { cssClass: 'agent-verifier', label: 'Verifier Agent'  },
+    planner_agent: { cssClass: 'agent-planner', label: 'Planner Agent' },
+    query_agent: { cssClass: 'agent-query', label: 'Query Agent' },
+    link_agent: { cssClass: 'agent-link', label: 'Link Agent' },
+    trend_agent: { cssClass: 'agent-trend', label: 'Trend Agent' },
+    risk_agent: { cssClass: 'agent-risk', label: 'Risk Agent' },
+    verifier_agent: { cssClass: 'agent-verifier', label: 'Verifier Agent' },
 };
 
 function buildAgentTelemetryBar(agents, verificationRate) {
@@ -550,15 +559,15 @@ function appendMessage(content, sender, agentsMeta) {
     const chatHistory = document.getElementById('chat-history');
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${sender === 'user' ? 'user-message' : 'system-message'}`;
-    
+
     if (sender === 'system-loading') {
         msgDiv.id = 'loading-bubble';
     }
 
-    const avatar = sender === 'user' 
-        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>` 
-        : (sender === 'error' 
-            ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-high)" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>` 
+    const avatar = sender === 'user'
+        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
+        : (sender === 'error'
+            ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-high)" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
             : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`);
 
     // Build agent telemetry bar HTML for AI messages that have agent metadata
@@ -590,57 +599,186 @@ function formatMarkdownToHTML(md) {
         .replace(/\n/g, '<br>');
 }
 
-// 1. Vis.js Network Graph Renderer
-function renderNetworkGraph(graphData) {
-    const container = document.getElementById('network-graph-container');
-    container.innerHTML = ''; // Clear previous
+// 1. Vis.js Network Graph Renderer — Industry Grade
+function renderNetworkGraph(graphData, containerId = 'network-graph-container') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
 
-    const visNodes = graphData.nodes.map(n => ({
-        id: n.id,
-        label: n.label || n.name || n.id,
-        shape: ['person', 'accused', 'victim'].includes(n.type) ? 'dot' : 'box',
-        size: ['person', 'accused', 'victim'].includes(n.type) ? 24 : 18,
-        color: {
-            background: ['person', 'accused', 'victim'].includes(n.type) ? '#00f2fe' : '#6366f1',
-            border: '#fff',
-            highlight: { background: '#4facfe', border: '#fff' }
-        },
-        font: { color: '#f8fafc', face: 'Inter', size: 14 }
-    }));
+    // ── Node type → visual config map ──────────────────────────────────────
+    const NODE_STYLES = {
+        // Accused / Suspects — Red Dot
+        accused: { shape: 'dot', size: 28, bg: '#ef4444', border: '#fca5a5', glow: 'rgba(239,68,68,0.6)', font: '#fef2f2' },
+        suspect: { shape: 'dot', size: 28, bg: '#ef4444', border: '#fca5a5', glow: 'rgba(239,68,68,0.6)', font: '#fef2f2' },
 
-    const visEdges = graphData.edges.map(e => ({
-        from: e.source,
-        to: e.target,
-        label: e.basis || '',
-        color: { color: 'rgba(99, 102, 241, 0.6)', highlight: '#00f2fe' },
-        font: { color: '#94a3b8', size: 11, align: 'middle' },
-        arrows: { to: { enabled: true, scaleFactor: 0.5 } },
-        width: 2
-    }));
+        // Victims — Cyan Dot
+        victim: { shape: 'dot', size: 22, bg: '#06b6d4', border: '#67e8f9', glow: 'rgba(6,182,212,0.5)', font: '#ecfeff' },
+
+        // Persons / Narrative Entities — Purple Dot
+        person: { shape: 'dot', size: 20, bg: '#8b5cf6', border: '#c4b5fd', glow: 'rgba(139,92,246,0.5)', font: '#f5f3ff' },
+        narrative_entity: { shape: 'dot', size: 20, bg: '#8b5cf6', border: '#c4b5fd', glow: 'rgba(139,92,246,0.5)', font: '#f5f3ff' },
+
+        // Locations / Addresses / Jurisdictions / Districts — Amber Gold Hexagon
+        location: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+        address: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+        place: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+        district: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+        gpe: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+        loc: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+        site: { shape: 'hexagon', size: 24, bg: '#f59e0b', border: '#fef08a', glow: 'rgba(245,158,11,0.75)', font: '#fffbeb' },
+
+        // Crimes / Incidents — Indigo Square
+        crime: { shape: 'square', size: 18, bg: '#6366f1', border: '#a5b4fc', glow: 'rgba(99,102,241,0.5)', font: '#eef2ff' },
+        case: { shape: 'square', size: 18, bg: '#6366f1', border: '#a5b4fc', glow: 'rgba(99,102,241,0.5)', font: '#eef2ff' },
+
+        default: { shape: 'dot', size: 18, bg: '#64748b', border: '#94a3b8', glow: 'rgba(100,116,139,0.4)', font: '#f8fafc' },
+    };
+
+    // ── Build Vis.js nodes ──────────────────────────────────────────────────
+    const visNodes = graphData.nodes.map(n => {
+        let type = (n.type || 'default').toLowerCase();
+
+        // Smart fallback detection: if basis or label indicates an address/location
+        const basis = (n.basis || '').toLowerCase();
+        const rawLabel = (n.label || n.name || n.id || '').toLowerCase();
+        if (basis.includes('address') || basis.includes('location') || basis.includes('same_address') ||
+            rawLabel.includes('road') || rawLabel.includes('nagar') || rawLabel.includes('street') ||
+            rawLabel.includes('district') || rawLabel.includes('colony') || rawLabel.includes('layout')) {
+            type = 'location';
+        }
+
+        const style = NODE_STYLES[type] || NODE_STYLES.default;
+        const label = (n.label || n.name || n.id || '').toString();
+
+
+        return {
+            id: n.id,
+            label: label.length > 18 ? label.substring(0, 16) + '…' : label,
+            title: `<div style="background:#131830;border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:8px 12px;font-family:Inter,sans-serif;font-size:12px;color:#f8fafc;max-width:200px;">
+                        <strong style="color:#c4b5fd">${label}</strong><br>
+                        <span style="color:#94a3b8;font-size:11px;">Type: ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                        ${n.case_id ? `<br><span style="color:#94a3b8;font-size:11px;">Case: ${n.case_id}</span>` : ''}
+                    </div>`,
+            shape: style.shape,
+            size: style.size,
+            color: {
+                background: style.bg,
+                border: style.border,
+                highlight: { background: style.border, border: '#ffffff' },
+                hover: { background: style.border, border: '#ffffff' }
+            },
+            shadow: { enabled: true, color: style.glow, size: 18, x: 0, y: 0 },
+            font: {
+                color: style.font,
+                face: 'Inter',
+                size: 12,
+                bold: { color: style.font, size: 12 },
+                vadjust: style.shape === 'dot' ? 0 : 2
+            },
+            borderWidth: 2,
+            borderWidthSelected: 3,
+        };
+    });
+
+    // ── Edge color by relationship type ────────────────────────────────────
+    function edgeColor(basis) {
+        const b = (basis || '').toLowerCase();
+        if (b.includes('co-accused') || b.includes('co_accused')) return { color: 'rgba(239,68,68,0.65)', highlight: '#f87171' };
+        if (b.includes('victim')) return { color: 'rgba(6,182,212,0.55)', highlight: '#22d3ee' };
+        if (b.includes('location') || b.includes('district')) return { color: 'rgba(245,158,11,0.55)', highlight: '#fbbf24' };
+        return { color: 'rgba(139,92,246,0.55)', highlight: '#a78bfa' };
+    }
+
+    // ── Build Vis.js edges ──────────────────────────────────────────────────
+    const visEdges = graphData.edges.map((e, idx) => {
+        const ec = edgeColor(e.basis);
+        return {
+            id: `edge_${idx}`,
+            from: e.source,
+            to: e.target,
+            label: e.basis || '',
+            title: e.basis ? `<div style="background:#131830;border:1px solid rgba(139,92,246,0.35);border-radius:6px;padding:6px 10px;font-size:11px;color:#94a3b8;">${e.basis}</div>` : '',
+            color: { ...ec, opacity: 0.85 },
+            font: {
+                color: '#64748b',
+                face: 'JetBrains Mono',
+                size: 10,
+                align: 'middle',
+                strokeWidth: 2,
+                strokeColor: 'rgba(6,8,20,0.9)',
+                vadjust: -4,
+            },
+            arrows: { to: { enabled: true, scaleFactor: 0.55, type: 'arrow' } },
+            smooth: { enabled: true, type: 'curvedCW', roundness: 0.15 },
+            width: 2,
+            shadow: { enabled: true, color: ec.color, size: 6, x: 0, y: 0 },
+        };
+    });
 
     const data = {
         nodes: new vis.DataSet(visNodes),
         edges: new vis.DataSet(visEdges)
     };
 
+    // ── Physics + Interaction options ───────────────────────────────────────
     const options = {
+        nodes: { scaling: { min: 14, max: 34 } },
+        edges: { scaling: { min: 1, max: 4 } },
         physics: {
-            forceAtlas2Based: {
-                gravitationalConstant: -60,
-                centralGravity: 0.01,
-                springLength: 120,
-                springConstant: 0.08
+            solver: 'barnesHut',
+            barnesHut: {
+                gravitationalConstant: -8000,
+                centralGravity: 0.25,
+                springLength: 160,
+                springConstant: 0.04,
+                damping: 0.15,
+                avoidOverlap: 0.3
             },
-            maxVelocity: 50,
-            solver: 'forceAtlas2Based',
-            timestep: 0.35,
-            stabilization: { iterations: 150 }
+            maxVelocity: 55,
+            minVelocity: 0.1,
+            timestep: 0.4,
+            stabilization: { iterations: 200, fit: true }
         },
-        interaction: { hover: true, zoomView: true }
+        interaction: {
+            hover: true,
+            tooltipDelay: 120,
+            zoomView: true,
+            dragView: true,
+            navigationButtons: false,
+            keyboard: true,
+        },
+        layout: { improvedLayout: true },
     };
 
     networkInstance = new vis.Network(container, data, options);
+
+    // ── Stats overlay ───────────────────────────────────────────────────────
+    const statsBar = document.createElement('div');
+    statsBar.className = 'graph-stats-bar';
+    statsBar.innerHTML = `
+        <span class="graph-stat-chip">⬡ ${visNodes.length} Entities</span>
+        <span class="graph-stat-chip">↔ ${visEdges.length} Links</span>
+    `;
+    container.appendChild(statsBar);
+
+    // ── Floating zoom controls ──────────────────────────────────────────────
+    const controls = document.createElement('div');
+    controls.className = 'graph-controls';
+    controls.innerHTML = `
+        <button class="graph-ctrl-btn" title="Zoom In"  onclick="networkInstance.moveTo({scale: networkInstance.getScale()*1.3, animation:{duration:300,easingFunction:'easeInOutQuad'}})">+</button>
+        <button class="graph-ctrl-btn" title="Zoom Out" onclick="networkInstance.moveTo({scale: networkInstance.getScale()*0.75,animation:{duration:300,easingFunction:'easeInOutQuad'}})">−</button>
+        <button class="graph-ctrl-btn" title="Fit All"  onclick="networkInstance.fit({animation:{duration:400,easingFunction:'easeInOutQuad'}})">⤢</button>
+        <button class="graph-ctrl-btn" title="Reset Physics" onclick="networkInstance.setOptions({physics:{enabled:true}});networkInstance.stabilize()">⟳</button>
+    `;
+    container.appendChild(controls);
+
+    // Disable physics after stabilisation for performance
+    networkInstance.on('stabilizationIterationsDone', () => {
+        networkInstance.setOptions({ physics: { enabled: false } });
+        networkInstance.fit({ animation: { duration: 600, easingFunction: 'easeInOutQuad' } });
+    });
 }
+
 
 // 2. Chart.js Trends & Spikes Renderer (Command Center Dashboard)
 function renderTrends(trendFindings) {
@@ -727,7 +865,7 @@ function renderTrends(trendFindings) {
                 legend: { labels: { color: '#f8fafc', font: { size: 12 } } },
                 tooltip: {
                     callbacks: {
-                        afterLabel: function(context) {
+                        afterLabel: function (context) {
                             if (context.datasetIndex === 1 && trendFindings[context.dataIndex]) {
                                 const t = trendFindings[context.dataIndex];
                                 return t.pct_change ? `Surge Change: ${t.pct_change > 0 ? '+' : ''}${t.pct_change}% vs baseline` : '';
@@ -837,15 +975,15 @@ function loadAuditPageData() {
             allAuditCitations = data.citations || [];
             const rate = data.verification_rate ?? 100.0;
             const unsupported = data.unsupported_claims || [];
-            
+
             const rateEl = document.getElementById('audit-rate-val');
             if (rateEl) rateEl.innerText = `${rate.toFixed(1)}%`;
-            
+
             renderAuditTableRows(allAuditCitations, unsupported);
             return;
         } catch (e) { console.error(e); }
     }
-    
+
     // If empty or no recent query, show prompt
     const tbody = document.getElementById('audit-tbody');
     if (tbody) {
@@ -863,21 +1001,21 @@ function loadAuditPageData() {
 function renderAuditTableRows(citations, unsupported) {
     const tbody = document.getElementById('audit-tbody');
     if (!tbody) return;
-    
+
     const searchVal = (document.getElementById('audit-search')?.value || '').toLowerCase();
     tbody.innerHTML = '';
-    
+
     let renderedCount = 0;
-    
+
     // Render verified citations if matching filter
     if (auditFilterMode === 'all' || auditFilterMode === 'verified') {
         citations.forEach(c => {
             const cid = (c.record_id || 'FIR').toLowerCase();
             const claim = (c.claim || '').toLowerCase();
             const snippet = (c.raw_text_snippet || c.snippet || '').toLowerCase();
-            
+
             if (searchVal && !cid.includes(searchVal) && !claim.includes(searchVal) && !snippet.includes(searchVal)) return;
-            
+
             renderedCount++;
             tbody.innerHTML += `
                 <tr>
@@ -891,7 +1029,7 @@ function renderAuditTableRows(citations, unsupported) {
             `;
         });
     }
-    
+
     // Render unsupported claims if matching filter
     if (auditFilterMode === 'all' || auditFilterMode === 'unsupported') {
         if (unsupported && unsupported.length > 0) {
@@ -912,7 +1050,7 @@ function renderAuditTableRows(citations, unsupported) {
             });
         }
     }
-    
+
     if (renderedCount === 0) {
         tbody.innerHTML = `<tr><td colspan="3" class="text-center" style="padding: 2rem;">No matching citations found.</td></tr>`;
     }
@@ -949,55 +1087,7 @@ function loadGraphPageData() {
 }
 
 function renderFullNetworkGraph(graphData) {
-    const container = document.getElementById('full-graph-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const visNodes = graphData.nodes.map(n => ({
-        id: n.id,
-        label: n.label || n.name || n.id,
-        shape: ['person', 'accused', 'victim'].includes(n.type) ? 'dot' : 'box',
-        size: ['person', 'accused', 'victim'].includes(n.type) ? 28 : 22,
-        color: {
-            background: ['person', 'accused', 'victim'].includes(n.type) ? '#00f2fe' : '#6366f1',
-            border: '#fff',
-            highlight: { background: '#4facfe', border: '#fff' }
-        },
-        font: { color: '#f8fafc', face: 'Inter', size: 15 }
-    }));
-
-    const visEdges = graphData.edges.map(e => ({
-        from: e.source,
-        to: e.target,
-        label: e.basis || '',
-        color: { color: 'rgba(99, 102, 241, 0.7)', highlight: '#00f2fe' },
-        font: { color: '#94a3b8', size: 12, align: 'middle' },
-        arrows: { to: { enabled: true, scaleFactor: 0.6 } },
-        width: 2.5
-    }));
-
-    const data = {
-        nodes: new vis.DataSet(visNodes),
-        edges: new vis.DataSet(visEdges)
-    };
-
-    const options = {
-        physics: {
-            forceAtlas2Based: {
-                gravitationalConstant: -70,
-                centralGravity: 0.01,
-                springLength: 140,
-                springConstant: 0.08
-            },
-            maxVelocity: 50,
-            solver: 'forceAtlas2Based',
-            timestep: 0.35,
-            stabilization: { iterations: 150 }
-        },
-        interaction: { hover: true, zoomView: true }
-    };
-
-    networkInstance = new vis.Network(container, data, options);
+    renderNetworkGraph(graphData, 'full-graph-container');
 }
 
 function resetGraphPhysics() {
@@ -1036,7 +1126,7 @@ async function fetchDatabaseRecords() {
         }
         const data = await res.json();
         allDatabaseRecords = data.records || [];
-        
+
         if (totalCountEl) totalCountEl.innerText = allDatabaseRecords.length;
         renderDatabaseRows(allDatabaseRecords);
     } catch (e) {
@@ -1048,7 +1138,7 @@ async function fetchDatabaseRecords() {
 function renderDatabaseRows(records) {
     const tbody = document.getElementById('db-tbody');
     if (!tbody) return;
-    
+
     const searchVal = (document.getElementById('db-search')?.value || '').toLowerCase();
     tbody.innerHTML = '';
 
@@ -1114,7 +1204,7 @@ function restoreCommandCenterState() {
     if (storedDataStr && activeStatus !== 'running') {
         try {
             const data = JSON.parse(storedDataStr);
-            
+
             // Restore User Query and AI Answer in chat
             if (lastQueryText) {
                 appendMessage(lastQueryText, 'user');
@@ -1147,10 +1237,15 @@ function restoreCommandCenterState() {
             // Restore Courtroom Audit (`tab-audit`)
             renderAudit(data.citations || [], data.verification_rate ?? 100.0, data.unsupported_claims || []);
 
+            return;
         } catch (e) {
             console.error("Failed to restore Command Center state from localStorage:", e);
         }
     }
+
+    // Default initial baseline states when opening Command Center before any query is run:
+    renderTrends([]);
+    renderAudit([], 100.0, []);
 }
 
 window.addEventListener('DOMContentLoaded', () => {

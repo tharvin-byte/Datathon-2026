@@ -23,12 +23,11 @@
         <aside id="sidebar-container" class="sidebar"></aside>
 
         <!-- Main Split Screen Workspace -->
-        <main class="workspace">
+        <main class="workspace" id="workspace">
             <!-- Left Panel: Investigator Chat & Query Input -->
-            <section class="chat-panel">
+            <section class="chat-panel" id="chat-panel">
                 <div class="panel-header">
                     <h2>AI Investigator</h2>
-                    <span class="badge" id="agents-used-badge">Ready</span>
                 </div>
                 
                 <div class="chat-history" id="chat-history">
@@ -59,8 +58,13 @@
                 </div>
             </section>
 
+            <!-- Drag-to-Resize Handle -->
+            <div class="panel-resize-handle" id="panel-resize-handle" title="Drag to resize">
+                <div class="resize-grip"></div>
+            </div>
+
             <!-- Right Panel: Intelligence Tabs (Network Graph, Trends, Risk & Audit) -->
-            <section class="intel-panel">
+            <section class="intel-panel" id="intel-panel">
                 <div class="tabs-header">
                     <button class="tab-btn active" onclick="switchTab('tab-graph', this)">
                         <span>Syndicate Map</span>

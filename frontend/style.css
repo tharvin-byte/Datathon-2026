@@ -158,7 +158,7 @@ body {
 /* Workspace Layout */
 .workspace {
     display: grid;
-    grid-template-columns: 420px 1fr;
+    grid-template-columns: var(--chat-panel-width, 420px) 6px 1fr;
     flex: 1;
     overflow: hidden;
 }
@@ -168,8 +168,70 @@ body {
     display: flex;
     flex-direction: column;
     background: var(--bg-card);
-    border-right: 1px solid var(--border-color);
     overflow: hidden;
+    min-width: 280px;
+    max-width: 70vw;
+}
+
+/* Drag-to-Resize Handle */
+.panel-resize-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 6px;
+    background: var(--border-color);
+    cursor: col-resize;
+    position: relative;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.panel-resize-handle:hover,
+.panel-resize-handle.dragging {
+    background: rgba(139, 92, 246, 0.5);
+}
+
+.panel-resize-handle:hover .resize-grip,
+.panel-resize-handle.dragging .resize-grip {
+    opacity: 1;
+}
+
+.resize-grip {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    opacity: 0.35;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.resize-grip::before,
+.resize-grip::after,
+.resize-grip {
+    content: '';
+}
+
+.panel-resize-handle .resize-grip {
+    width: 2px;
+    height: 32px;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(139, 92, 246, 0.8) 0px,
+        rgba(139, 92, 246, 0.8) 3px,
+        transparent 3px,
+        transparent 6px
+    );
+    border-radius: 2px;
+}
+
+/* Right Panel: Intel */
+.intel-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 200px;
+    border-left: 1px solid var(--border-color);
 }
 
 .panel-header {
@@ -1704,4 +1766,188 @@ body {
     gap: 0.5rem;
 }
 
+
+/* ==========================================================================
+   AGENT EXECUTION TELEMETRY BAR — Live Multi-Agent Pipeline Visualization
+   Renders dynamically inside the AI answer message bubble after each inquiry.
+   ========================================================================== */
+
+.agent-telemetry-bar {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(139, 92, 246, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    animation: telemetrySlideIn 0.4s ease forwards;
+}
+
+@keyframes telemetrySlideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.agent-telemetry-label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.agent-telemetry-label svg {
+    flex-shrink: 0;
+}
+
+.agent-telemetry-pills {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* Individual Agent Pill */
+.agent-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: all 0.25s ease;
+    opacity: 0;
+    animation: pillFadeIn 0.35s ease forwards;
+}
+
+.agent-pill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.agent-pill:hover::before {
+    opacity: 1;
+}
+
+.agent-pill-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.7); }
+}
+
+@keyframes pillFadeIn {
+    from { opacity: 0; transform: scale(0.88) translateX(-4px); }
+    to   { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+/* Per-Agent Color Themes */
+.agent-pill.agent-planner {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #c4b5fd;
+}
+.agent-pill.agent-planner .agent-pill-dot { background: #a78bfa; }
+
+.agent-pill.agent-query {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #a5b4fc;
+}
+.agent-pill.agent-query .agent-pill-dot { background: #818cf8; }
+
+.agent-pill.agent-link {
+    background: rgba(34, 211, 238, 0.1);
+    border-color: rgba(34, 211, 238, 0.35);
+    color: #67e8f9;
+}
+.agent-pill.agent-link .agent-pill-dot { background: #22d3ee; }
+
+.agent-pill.agent-trend {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.35);
+    color: #fde68a;
+}
+.agent-pill.agent-trend .agent-pill-dot { background: #fbbf24; }
+
+.agent-pill.agent-risk {
+    background: rgba(248, 113, 113, 0.1);
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+}
+.agent-pill.agent-risk .agent-pill-dot { background: #f87171; }
+
+.agent-pill.agent-verifier {
+    background: rgba(52, 211, 153, 0.1);
+    border-color: rgba(52, 211, 153, 0.35);
+    color: #6ee7b7;
+}
+.agent-pill.agent-verifier .agent-pill-dot {
+    background: #34d399;
+    animation: dotPulse 1.2s ease-in-out infinite;
+}
+
+/* Verification Rate Badge inside telemetry bar */
+.telemetry-verify-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-left: auto;
+    flex-shrink: 0;
+    opacity: 0;
+    animation: pillFadeIn 0.5s ease 0.5s forwards;
+}
+
+.telemetry-verify-badge.rate-high {
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    color: #34d399;
+}
+
+.telemetry-verify-badge.rate-medium {
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: #fbbf24;
+}
+
+.telemetry-verify-badge.rate-low {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    color: #f87171;
+}
+
+/* Connector arrows between pills */
+.agent-pill-arrow {
+    color: rgba(148, 163, 184, 0.45);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    user-select: none;
+    flex-shrink: 0;
+}
 

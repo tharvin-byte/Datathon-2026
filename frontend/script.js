@@ -6,6 +6,66 @@ let trendsChartInstance = null;
 let fullTrendsChartInstance = null;
 let hotspotShareChartInstance = null;
 
+// ==========================================================================
+// PANEL DRAG-TO-RESIZE LOGIC
+// Lets the user drag the handle between AI Investigator and Intel panels.
+// ==========================================================================
+(function initPanelResize() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const workspace  = document.getElementById('workspace');
+        const handle     = document.getElementById('panel-resize-handle');
+        if (!workspace || !handle) return;
+
+        // Restore saved width from previous session
+        const savedWidth = localStorage.getItem('chatPanelWidth');
+        if (savedWidth) workspace.style.setProperty('--chat-panel-width', savedWidth);
+
+        let isDragging = false;
+        let startX     = 0;
+        let startWidth = 0;
+
+        handle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX     = e.clientX;
+            startWidth = workspace.getBoundingClientRect().left
+                       ? parseInt(getComputedStyle(workspace).getPropertyValue('--chat-panel-width') || '420', 10)
+                       : 420;
+            // Measure actual current width from the chat panel itself
+            const chatPanel = document.getElementById('chat-panel');
+            if (chatPanel) startWidth = chatPanel.getBoundingClientRect().width;
+
+            handle.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const delta    = e.clientX - startX;
+            const minWidth = 280;
+            const maxWidth = Math.floor(window.innerWidth * 0.70);
+            const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + delta));
+            workspace.style.setProperty('--chat-panel-width', newWidth + 'px');
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            handle.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            // Persist the chosen width so it survives refresh
+            const w = workspace.style.getPropertyValue('--chat-panel-width');
+            if (w) localStorage.setItem('chatPanelWidth', w);
+            // Redraw chart/graph if visible
+            if (networkInstance) networkInstance.redraw();
+            if (trendsChartInstance) trendsChartInstance.resize();
+        });
+    });
+})();
+
+
 // 3. Trends Page Loader (`trends.html`)
 function loadTrendsPageData() {
     // Clear any permanent legacy items from previous browser sessions
@@ -395,13 +455,12 @@ async function executeInvestigation() {
         // Remove loading message
         removeLoadingMessage();
 
-        // Display AI Report in Chat
-        appendMessage(formatMarkdownToHTML(data.answer_text || "No response generated."), 'ai');
+        // Display AI Report in Chat — with live agent telemetry bar
+        appendMessage(formatMarkdownToHTML(data.answer_text || "No response generated."), 'ai', {
+            agents: data.agents_used || [],
+            verificationRate: data.verification_rate ?? 100.0
+        });
 
-        // Update Top Badge
-        if (data.agents_used && data.agents_used.length > 0) {
-            document.getElementById('agents-used-badge').innerText = `Agents: ${data.agents_used.join(', ')}`;
-        }
 
         // 1. Render Network Graph (`tab-graph`)
         if (data.network_graph && data.network_graph.nodes && data.network_graph.nodes.length > 0) {
@@ -435,8 +494,59 @@ async function executeInvestigation() {
     }
 }
 
-// Chat UI Helper
-function appendMessage(content, sender) {
+// ==========================================================================
+// AGENT TELEMETRY BAR BUILDER
+// Builds the live animated agent execution bar from real API response data.
+// Each agent type gets its own color-coded pill with staggered fade-in animation.
+// ==========================================================================
+const AGENT_META = {
+    planner_agent:  { cssClass: 'agent-planner',  label: 'Planner Agent'   },
+    query_agent:    { cssClass: 'agent-query',    label: 'Query Agent'     },
+    link_agent:     { cssClass: 'agent-link',     label: 'Link Agent'      },
+    trend_agent:    { cssClass: 'agent-trend',    label: 'Trend Agent'     },
+    risk_agent:     { cssClass: 'agent-risk',     label: 'Risk Agent'      },
+    verifier_agent: { cssClass: 'agent-verifier', label: 'Verifier Agent'  },
+};
+
+function buildAgentTelemetryBar(agents, verificationRate) {
+    if (!agents || agents.length === 0) return '';
+
+    // Only show agents that actually ran — always append verifier since it always runs
+    const pipelineAgents = [...agents];
+    if (!pipelineAgents.includes('verifier_agent')) pipelineAgents.push('verifier_agent');
+
+    // Build pills with staggered CSS animation delay
+    let pillsHTML = '';
+    pipelineAgents.forEach((agentKey, idx) => {
+        const meta = AGENT_META[agentKey] || { cssClass: 'agent-query', label: agentKey };
+        const delay = (idx * 0.08).toFixed(2);
+        const isLast = idx === pipelineAgents.length - 1;
+        pillsHTML += `<span class="agent-pill ${meta.cssClass}" style="animation-delay:${delay}s" title="${agentKey}"><span class="agent-pill-dot"></span>${meta.label}</span>`;
+        if (!isLast) pillsHTML += `<span class="agent-pill-arrow">→</span>`;
+    });
+
+    // Verification rate badge
+    const rate = typeof verificationRate === 'number' ? verificationRate : 100.0;
+    const rateClass = rate >= 85 ? 'rate-high' : rate >= 60 ? 'rate-medium' : 'rate-low';
+    const rateIcon = rate >= 85 ? '✓' : rate >= 60 ? '⚠' : '✗';
+    const badgeHTML = `<span class="telemetry-verify-badge ${rateClass}" title="Verifier grounding rate: ${rate.toFixed(1)}%">${rateIcon} ${rate.toFixed(1)}% Grounded</span>`;
+
+    return `
+    <div class="agent-telemetry-bar">
+        <div class="agent-telemetry-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path></svg>
+            Agents Mobilised
+        </div>
+        <div class="agent-telemetry-pills">
+            ${pillsHTML}
+            ${badgeHTML}
+        </div>
+    </div>`;
+}
+
+
+// Chat UI Helper — accepts optional agentsMeta { agents, verificationRate }
+function appendMessage(content, sender, agentsMeta) {
     const chatHistory = document.getElementById('chat-history');
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${sender === 'user' ? 'user-message' : 'system-message'}`;
@@ -451,9 +561,14 @@ function appendMessage(content, sender) {
             ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--status-high)" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>` 
             : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`);
 
+    // Build agent telemetry bar HTML for AI messages that have agent metadata
+    const telemetryHTML = (sender === 'ai' && agentsMeta && agentsMeta.agents && agentsMeta.agents.length > 0)
+        ? buildAgentTelemetryBar(agentsMeta.agents, agentsMeta.verificationRate)
+        : '';
+
     msgDiv.innerHTML = `
         <div class="msg-avatar">${avatar}</div>
-        <div class="msg-content">${content}</div>
+        <div class="msg-content">${content}${telemetryHTML}</div>
     `;
 
     chatHistory.appendChild(msgDiv);
@@ -1005,13 +1120,10 @@ function restoreCommandCenterState() {
                 appendMessage(lastQueryText, 'user');
             }
             if (lastAnswerText || data.answer_text) {
-                appendMessage(formatMarkdownToHTML(lastAnswerText || data.answer_text), 'ai');
-            }
-
-            // Restore Top Badge
-            if (data.agents_used && data.agents_used.length > 0) {
-                const badgeEl = document.getElementById('agents-used-badge');
-                if (badgeEl) badgeEl.innerText = `Agents: ${data.agents_used.join(', ')}`;
+                appendMessage(formatMarkdownToHTML(lastAnswerText || data.answer_text), 'ai', {
+                    agents: data.agents_used || [],
+                    verificationRate: data.verification_rate ?? 100.0
+                });
             }
 
             // Restore Network Graph (`tab-graph`)

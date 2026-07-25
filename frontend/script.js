@@ -1252,3 +1252,111 @@ window.addEventListener('DOMContentLoaded', () => {
     restoreCommandCenterState();
 });
 
+// ==========================================================================
+// VOICE INPUT MODULE (English en-IN / Kannada kn-IN Speech Recognition)
+// ==========================================================================
+let _voiceRecognition = null;
+let _isVoiceRecording = false;
+let _currentVoiceLang = 'en-IN'; // Default to English so English spoken queries convert to English text!
+
+function switchMicLanguage(event) {
+    if (event) event.stopPropagation(); // Don't trigger mic toggle when clicking tag
+    const langTag = document.getElementById("mic-lang-tag");
+    
+    if (_currentVoiceLang === 'en-IN') {
+        _currentVoiceLang = 'kn-IN';
+        if (langTag) langTag.innerText = "KN";
+    } else {
+        _currentVoiceLang = 'en-IN';
+        if (langTag) langTag.innerText = "EN";
+    }
+
+    if (_voiceRecognition && _isVoiceRecording) {
+        _voiceRecognition.lang = _currentVoiceLang;
+    }
+}
+
+function toggleVoiceInput() {
+    const micBtn = document.getElementById("mic-btn");
+    const queryInput = document.getElementById("query-input");
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert("Voice recognition is supported in Google Chrome, Microsoft Edge, and modern browsers.");
+        return;
+    }
+
+    if (_isVoiceRecording) {
+        if (_voiceRecognition) {
+            _voiceRecognition.stop();
+        }
+        _isVoiceRecording = false;
+        if (micBtn) {
+            micBtn.style.background = "var(--bg-tertiary, #1e293b)";
+            micBtn.style.color = "var(--accent-cyan, #38bdf8)";
+            micBtn.style.borderColor = "rgba(56,189,248,0.3)";
+            micBtn.style.boxShadow = "none";
+        }
+        const langName = _currentVoiceLang === 'kn-IN' ? 'Kannada' : 'English';
+        if (queryInput) queryInput.placeholder = `Enter investigation prompt or speak in ${langName}...`;
+        return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    _voiceRecognition = new SpeechRecognition();
+    _voiceRecognition.continuous = false;
+    _voiceRecognition.interimResults = true;
+    _voiceRecognition.lang = _currentVoiceLang || 'en-IN';
+
+    _voiceRecognition.onstart = function() {
+        _isVoiceRecording = true;
+        if (micBtn) {
+            micBtn.style.background = "#ef4444";
+            micBtn.style.color = "#ffffff";
+            micBtn.style.borderColor = "#ef4444";
+            micBtn.style.boxShadow = "0 0 12px rgba(239, 68, 68, 0.7)";
+        }
+        const langName = _currentVoiceLang === 'kn-IN' ? 'Kannada (ಕನ್ನಡ)' : 'English';
+        if (queryInput) queryInput.placeholder = `🎙️ Listening in ${langName}... Speak now...`;
+    };
+
+    _voiceRecognition.onresult = function(event) {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+        if (queryInput && transcript) {
+            queryInput.value = transcript;
+        }
+    };
+
+    _voiceRecognition.onerror = function(event) {
+        console.warn("[Voice] Speech recognition error:", event.error);
+        _isVoiceRecording = false;
+        if (micBtn) {
+            micBtn.style.background = "var(--bg-tertiary, #1e293b)";
+            micBtn.style.color = "var(--accent-cyan, #38bdf8)";
+            micBtn.style.borderColor = "rgba(56,189,248,0.3)";
+            micBtn.style.boxShadow = "none";
+        }
+        if (queryInput) queryInput.placeholder = "Enter investigation prompt or speak in Kannada / English...";
+    };
+
+    _voiceRecognition.onend = function() {
+        _isVoiceRecording = false;
+        if (micBtn) {
+            micBtn.style.background = "var(--bg-tertiary, #1e293b)";
+            micBtn.style.color = "var(--accent-cyan, #38bdf8)";
+            micBtn.style.borderColor = "rgba(56,189,248,0.3)";
+            micBtn.style.boxShadow = "none";
+        }
+        if (queryInput) queryInput.placeholder = "Enter investigation prompt or speak in Kannada / English...";
+    };
+
+    try {
+        _voiceRecognition.start();
+    } catch (err) {
+        console.error("[Voice] Start error:", err);
+    }
+}
+
+

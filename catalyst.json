@@ -1,0 +1,11 @@
+{
+  "client": {
+    "source": "frontend"
+  },
+  "appsail": [
+    {
+      "name": "backend",
+      "source": "backend"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "defaults": {
+    "project": 1,
+    "env": 1
+  },
+  "actives": {
+    "project": 1,
+    "env": 1
+  },
+  "projects": [
+    {
+      "idx": 1,
+      "id": "56850000000017001",
+      "name": "HACKTHON",
+      "domain": {
+        "id": "50044337717",
+        "name": "hackthon-60080002915.development"
+      },
+      "timezone": "Asia/Kolkata",
+      "env": [
+        {
+          "idx": 1,
+          "id": "60080002915",
+          "name": "Development",
+          "type": 3
+        }
+      ]
+    }
+  ]
+}

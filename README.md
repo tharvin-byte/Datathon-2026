@@ -158,4 +158,4 @@ Open `frontend/index.html` in your web browser or access `http://127.0.0.1:8001/
 
 ## 📜 License & Acknowledgments
 
-Developed for the **Zoho Catalyst & KSP Hackathon 2026**. Built with Google Gemini AI, LangGraph, and Scikit-Learn.
+Developed for the **Datathon 2026**. Built with LangGraph, and Scikit-Learn.

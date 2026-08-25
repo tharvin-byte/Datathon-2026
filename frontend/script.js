@@ -439,11 +439,24 @@ async function executeInvestigation() {
         // uploaded into the active session.
         if (datasetSelectEl) requestBody.dataset = datasetVal;
 
-        const response = await fetch('/api/investigate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 90000);
+        let response;
+        try {
+            response = await fetch('/api/investigate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                signal: controller.signal
+            });
+        } catch (requestError) {
+            if (requestError.name === 'AbortError') {
+                throw new Error('The investigation timed out after 90 seconds. Check the dataset and try again.');
+            }
+            throw new Error('The backend is unavailable. Confirm the server is running and try again.');
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
             let detail = 'API request failed.';
@@ -575,9 +588,14 @@ function appendMessage(content, sender, agentsMeta) {
         ? buildAgentTelemetryBar(agentsMeta.agents, agentsMeta.verificationRate)
         : '';
 
+    // User and error strings are plain text; only the locally formatted AI
+    // response is allowed to contain presentation markup.
+    const renderedContent = sender === 'ai' || sender === 'system-loading'
+        ? content
+        : escapeHtml(String(content));
     msgDiv.innerHTML = `
         <div class="msg-avatar">${avatar}</div>
-        <div class="msg-content">${content}${telemetryHTML}</div>
+        <div class="msg-content">${renderedContent}${telemetryHTML}</div>
     `;
 
     chatHistory.appendChild(msgDiv);
@@ -589,9 +607,16 @@ function removeLoadingMessage() {
     if (loadingBubble) loadingBubble.remove();
 }
 
-// Basic Markdown to HTML formatting for Composer Output
+function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[character]));
+}
+
+// Basic Markdown to HTML formatting for Composer Output. Escape first so
+// generated text cannot introduce scripts or arbitrary attributes.
 function formatMarkdownToHTML(md) {
-    return md
+    return escapeHtml(String(md || ''))
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')

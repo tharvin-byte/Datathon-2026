@@ -34,13 +34,15 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Enable CORS for frontend requests
+# Keep browser access explicit. Same-origin deployment needs no CORS, while local
+# development can opt into additional origins with CORS_ORIGINS.
+_cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://127.0.0.1:8001,http://localhost:8001").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Include all Phase 2 routers

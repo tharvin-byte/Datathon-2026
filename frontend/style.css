@@ -2244,3 +2244,177 @@ body {
     .legend { overflow-x: auto; white-space: nowrap; }
     .main-content { padding: 1rem; }
 }
+
+
+/* Persistent theme control and light institutional theme */
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    width: 100%;
+    margin-top: 1rem;
+    padding: .55rem .7rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-elevated, #19263A);
+    color: var(--text-secondary);
+    font: 600 .76rem var(--font-sans);
+    cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+    background: #1E2D43;
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
+    outline: none;
+}
+
+.theme-toggle-mark {
+    width: 14px;
+    height: 14px;
+    display: inline-block;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    position: relative;
+}
+
+.theme-toggle-mark::after {
+    content: '';
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    top: -2px;
+    right: -2px;
+    border-radius: 50%;
+    background: var(--surface-elevated, #19263A);
+}
+
+html[data-theme="light"] {
+    --bg-primary: #F4F6F8;
+    --bg-secondary: #EDF1F5;
+    --bg-card: #FFFFFF;
+    --bg-glass: rgba(255, 255, 255, .96);
+    --border-color: #D9E0E7;
+    --border-glow: rgba(47, 113, 138, .18);
+    --accent-cyan: #2F718A;
+    --accent-blue: #2F718A;
+    --accent-indigo: #2F718A;
+    --text-primary: #172033;
+    --text-secondary: #4E5B6D;
+    --text-muted: #788496;
+    --status-low: #2F765B;
+    --status-medium: #A56C1B;
+    --status-high: #B83B3B;
+    --ai-purple: #665894;
+    --surface-elevated: #F0F3F6;
+}
+
+html[data-theme="light"] body,
+html[data-theme="light"] .main-content,
+html[data-theme="light"] .intel-panel,
+html[data-theme="light"] .chat-panel {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+html[data-theme="light"] .sidebar,
+html[data-theme="light"] .sidebar-footer,
+html[data-theme="light"] .panel-header,
+html[data-theme="light"] .health-item {
+    background: var(--bg-secondary);
+}
+
+html[data-theme="light"] .panel,
+html[data-theme="light"] .graph-box,
+html[data-theme="light"] .chat-history,
+html[data-theme="light"] .trends-wrapper,
+html[data-theme="light"] .audit-wrapper {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 20px rgba(23, 32, 51, .06);
+}
+
+html[data-theme="light"] .logo-title,
+html[data-theme="light"] .brand-text h1,
+html[data-theme="light"] .panel-title,
+html[data-theme="light"] .page-title,
+html[data-theme="light"] .panel-header h2 {
+    color: var(--text-primary);
+}
+
+html[data-theme="light"] .sidebar-nav .nav-item.active {
+    background: #E4EFF3;
+    border-color: #AFCBD5;
+    color: #1F5265;
+    box-shadow: inset 3px 0 0 var(--accent-blue);
+}
+
+html[data-theme="light"] .sidebar-nav .nav-item:hover,
+html[data-theme="light"] .btn-secondary:hover,
+html[data-theme="light"] .prompt-chip:hover,
+html[data-theme="light"] .tab-btn:hover {
+    background: #F0F3F6;
+    color: var(--text-primary);
+}
+
+html[data-theme="light"] .btn-primary,
+html[data-theme="light"] #send-btn {
+    background: #2F718A;
+    border-color: #2F718A;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(47, 113, 138, .16);
+}
+
+html[data-theme="light"] .btn-secondary,
+html[data-theme="light"] .prompt-chip,
+html[data-theme="light"] .tab-btn,
+html[data-theme="light"] .theme-toggle {
+    background: #FFFFFF;
+    color: var(--text-secondary);
+}
+
+html[data-theme="light"] .theme-toggle:hover,
+html[data-theme="light"] .theme-toggle:focus-visible {
+    background: #EAF2F5;
+}
+
+html[data-theme="light"] .theme-toggle-mark::after {
+    background: #FFFFFF;
+}
+
+html[data-theme="light"] .verify-badge.verified,
+html[data-theme="light"] .badge-success {
+    background: #E8F3EE;
+    border-color: #8CBCA7;
+    color: #276247;
+}
+
+html[data-theme="light"] .verify-badge.warning,
+html[data-theme="light"] .badge-warning {
+    background: #FFF4DE;
+    border-color: #D7B26C;
+    color: #805315;
+}
+
+html[data-theme="light"] .badge-danger {
+    background: #FBEAEA;
+    border-color: #D98A8A;
+    color: #963333;
+}
+
+html[data-theme="light"] #dataset-select,
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+    background: #FFFFFF;
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+@media (max-width: 767px) {
+    .theme-toggle { width: auto; margin-top: .75rem; justify-content: center; }
+    .sidebar-header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+    .logo-box { min-width: 0; }
+}

@@ -3,9 +3,34 @@
 // and auto-highlights the current active page while syncing session/role metadata.
 
 document.addEventListener("DOMContentLoaded", () => {
+    applySavedTheme();
     renderNavigation();
     loadSessionMeta();
+    initThemeToggle();
 });
+
+function applySavedTheme() {
+    const theme = localStorage.getItem("crime_theme") || "dark";
+    document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+}
+
+function initThemeToggle() {
+    const toggle = document.getElementById("theme-toggle");
+    if (!toggle) return;
+    const updateLabel = () => {
+        const isLight = document.documentElement.dataset.theme === "light";
+        toggle.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
+        toggle.querySelector(".theme-toggle-label").textContent = isLight ? "Dark mode" : "Light mode";
+        toggle.classList.toggle("is-light", isLight);
+    };
+    toggle.addEventListener("click", () => {
+        const nextTheme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+        document.documentElement.dataset.theme = nextTheme;
+        localStorage.setItem("crime_theme", nextTheme);
+        updateLabel();
+    });
+    updateLabel();
+}
 
 // SVG Icons (Lucide vector paths)
 const ICONS = {
@@ -77,6 +102,10 @@ function renderNavigation() {
                     <span class="logo-subtitle">KSP Intelligence Platform</span>
                 </div>
             </div>
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode">
+                <span class="theme-toggle-mark" aria-hidden="true"></span>
+                <span class="theme-toggle-label">Light mode</span>
+            </button>
         </div>
         <nav class="sidebar-nav">
     `;

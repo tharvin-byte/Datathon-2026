@@ -2061,3 +2061,186 @@ body {
 }
 
 
+
+
+/* ============================================================================
+   INSTITUTIONAL INTELLIGENCE REFRESH
+   Visual-only layer. API contracts and existing component structure are unchanged.
+   ============================================================================ */
+:root {
+    --bg-primary: #0B1220;
+    --bg-secondary: #0F1828;
+    --bg-card: #141F30;
+    --bg-glass: rgba(20, 31, 48, 0.96);
+    --border-color: #27364A;
+    --border-glow: rgba(75, 142, 173, 0.24);
+    --accent-cyan: #4B8EAD;
+    --accent-blue: #3B82A0;
+    --accent-indigo: #4B8EAD;
+    --text-primary: #F1F5F9;
+    --text-secondary: #B6C2D1;
+    --text-muted: #7F8DA1;
+    --status-low: #3D8B6D;
+    --status-medium: #C98A32;
+    --status-high: #D64545;
+    --ai-purple: #7568A8;
+    --surface-elevated: #19263A;
+}
+
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.sidebar {
+    background: var(--bg-secondary);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+}
+
+.logo-title,
+.brand-text h1 {
+    color: var(--text-primary);
+    background: none;
+    -webkit-text-fill-color: initial;
+}
+
+.logo-subtitle,
+.subtitle {
+    color: var(--accent-cyan);
+}
+
+.sidebar-nav .nav-item:hover {
+    background: #1E2D43;
+    border-color: var(--border-color);
+}
+
+.sidebar-nav .nav-item:hover svg,
+.sidebar-nav .nav-item.active svg {
+    color: var(--accent-cyan);
+    filter: none;
+}
+
+.sidebar-nav .nav-item.active {
+    background: #182A35;
+    color: var(--text-primary);
+    border-color: #3B6478;
+    box-shadow: inset 3px 0 0 var(--accent-cyan);
+}
+
+.sidebar-footer,
+.panel-header,
+.health-item {
+    background: #0F1828;
+}
+
+.main-content,
+.intel-panel,
+.chat-panel {
+    background: var(--bg-primary);
+}
+
+.panel,
+.graph-box,
+.chat-history,
+.trends-wrapper,
+.audit-wrapper {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+    backdrop-filter: none;
+}
+
+.panel-resize-handle {
+    background: var(--border-color);
+}
+
+.panel-resize-handle:hover,
+.panel-resize-handle.dragging {
+    background: var(--accent-cyan);
+}
+
+.panel-header h2,
+.panel-title,
+.page-title {
+    color: var(--text-primary);
+}
+
+.btn-primary,
+#send-btn {
+    background: var(--accent-blue);
+    border-color: #5FA2BA;
+    box-shadow: 0 4px 15px rgba(59, 130, 160, 0.18);
+}
+
+.btn-primary:hover,
+#send-btn:hover {
+    background: #4B8EAD;
+    box-shadow: 0 6px 22px rgba(75, 142, 173, 0.24);
+}
+
+.btn-secondary,
+.prompt-chip,
+.tab-btn {
+    background: var(--surface-elevated);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+.btn-secondary:hover,
+.prompt-chip:hover,
+.tab-btn:hover {
+    background: #1E2D43;
+    border-color: var(--accent-cyan);
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent-cyan);
+}
+
+.verify-badge.verified,
+.badge-success {
+    background: #172B24;
+    border-color: #3D8B6D;
+    color: #83C9A9;
+}
+
+.verify-badge.warning,
+.badge-warning {
+    background: #302717;
+    border-color: #C98A32;
+    color: #E4B66A;
+}
+
+.badge-danger {
+    background: #321B21;
+    border-color: #D64545;
+    color: #F08A8A;
+}
+
+/* Semantic graph legend colors: red danger, blue information, orange attention,
+   purple analysis, green verified. */
+.legend-item .dot {
+    box-shadow: none !important;
+}
+
+@media (max-width: 1279px) {
+    .sidebar { width: 228px; min-width: 228px; }
+    .main-content { padding: 1.5rem; }
+}
+
+@media (max-width: 767px) {
+    .app-container { display: block; overflow: auto; height: auto; min-height: 100vh; }
+    .sidebar { width: 100%; min-width: 0; height: auto; position: sticky; top: 0; }
+    .sidebar-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; padding: 0.5rem; }
+    .nav-section-label, .sidebar-footer { display: none; }
+    .sidebar-nav .nav-item { justify-content: center; padding: 0.6rem 0.3rem; font-size: 0.68rem; text-align: center; }
+    .sidebar-nav .nav-item svg { width: 16px; height: 16px; }
+    .workspace { display: flex; flex-direction: column; height: auto; overflow: visible; }
+    .chat-panel, .intel-panel { min-height: 560px; }
+    .panel-resize-handle { display: none; }
+    .tabs-header { position: sticky; top: 0; z-index: 2; overflow-x: auto; }
+    .legend { overflow-x: auto; white-space: nowrap; }
+    .main-content { padding: 1rem; }
+}

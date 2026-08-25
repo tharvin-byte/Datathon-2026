@@ -2418,3 +2418,41 @@ html[data-theme="light"] select {
     .sidebar-header { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
     .logo-box { min-width: 0; }
 }
+
+
+/* Light-mode contrast corrections for investigation communication */
+html[data-theme="light"] .msg-content,
+html[data-theme="light"] .system-message .msg-content {
+    background: #FFFFFF;
+    border-color: #D9E0E7;
+    color: #172033;
+}
+
+html[data-theme="light"] .user-message .msg-content {
+    background: #EAF2F5;
+    border-color: #AFCBD5;
+}
+
+html[data-theme="light"] .msg-content h3 {
+    color: #1F5265;
+}
+
+html[data-theme="light"] .msg-content strong {
+    color: #172033;
+}
+
+html[data-theme="light"] .chat-input-area {
+    background: #EDF1F5;
+    border-top-color: #D9E0E7;
+}
+
+html[data-theme="light"] .quick-prompts .prompt-chip {
+    background: #F0F3F6;
+    border-color: #C7D0DA;
+    color: #2F5263;
+}
+
+html[data-theme="light"] .quick-prompts .prompt-chip:hover {
+    background: #E4EFF3;
+    border-color: #2F718A;
+}

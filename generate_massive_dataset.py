@@ -232,8 +232,8 @@ for i in range(total_rows):
 
 # Write to both locations
 paths = [
-    "e:/PROJECTS/ZOHO/massive_realworld_syndicates.csv",
-    "e:/PROJECTS/ZOHO/backend/data/massive_realworld_syndicates.csv"
+    "massive_realworld_syndicates.csv",
+    "backend/data/massive_realworld_syndicates.csv"
 ]
 
 header = ["case_id", "date", "district", "crime_type", "accused_name", "co_accused_ids", "description"]

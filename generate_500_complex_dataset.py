@@ -195,10 +195,10 @@ for i in range(TOTAL_ROWS):
     
     rows.append([case_id, case_date, district, crime_type, accused_name, co_accused_ids, full_description])
 
-# Output file destinations
+# Write to both locations
 output_paths = [
-    "e:/PROJECTS/ZOHO/complex_500_dataset.csv",
-    "e:/PROJECTS/ZOHO/backend/data/complex_500_dataset.csv"
+    "complex_500_dataset.csv",
+    "backend/data/complex_500_dataset.csv"
 ]
 
 header = ["case_id", "date", "district", "crime_type", "accused_name", "co_accused_ids", "description"]
@@ -210,4 +210,4 @@ for path in output_paths:
         writer.writerows(rows)
     print(f"Successfully generated {len(rows)} complex rows to: {path}")
 
-print("✅ 500-row Deep-Complexity Dataset Generation Complete!")
+print("[SUCCESS] 500-row Deep-Complexity Dataset Generation Complete!")

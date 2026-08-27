@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 sys.path.append(os.path.dirname(__file__))
 
 from routers import auth, dataset, query, session, dashboard, ws_status, records
-from core.rbac import require_permission
+from core.rbac import require_permission, normalize_role
 from core.session_store import get_session
 from data.dataset_loader import load_dataset
 from routers.dataset import LOADED_DATASETS
@@ -84,6 +84,10 @@ async def get_records(dataset: str = "complex", session_id: str = "default"):
         raise HTTPException(status_code=500, detail="No dataset loaded.")
         
     df = LOADED_DATASETS[ds_key]["df"]
+    role = normalize_role(get_session(session_id).get("role"))
+    if role in {"local_officer", "investigator"} and "district" in df.columns:
+        district = str(get_session(session_id).get("district", "")).strip().lower()
+        df = df[df["district"].astype(str).str.strip().str.lower() == district]
     records_list = df.fillna("").to_dict(orient="records")
     return {
         "dataset": ds_key,

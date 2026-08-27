@@ -75,6 +75,20 @@ class RbacTests(unittest.TestCase):
         self.assertEqual(updated.status_code, 200)
         self.assertEqual(updated.json()["record"]["crime_type"], "Robbery")
 
+    def test_local_officer_reads_only_home_district_records(self):
+        admin = self.login("admin")
+        csv = (
+            "case_id,date,district,crime_type,accused_name,victim_name,address,phone,co_accused_ids,IPC_section,description\n"
+            "C010,2026-01-01,Mysuru,Theft,Raju,Sita,MG Road,9000000000,,379,Local report\n"
+            "C011,2026-01-01,Bengaluru,Theft,Kiran,Ravi,MG Road,9000000001,,379,Other district\n"
+        )
+        uploaded = self.client.post("/dataset/upload", files={"file": ("scope.csv", io.BytesIO(csv.encode()), "text/csv")}, data={"session_id": admin["session_id"]})
+        self.assertEqual(uploaded.status_code, 200)
+        local = self.login("local_officer", "Mysuru")
+        response = self.client.get(f"/api/records?session_id={local['session_id']}")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["case_id"] for row in response.json()["records"]], ["C010"])
+
     def test_senior_officer_has_statewide_investigation_scope(self):
         senior = self.login("senior_officer", "Mysuru")
         from backend.core.access_gate import check_access

@@ -1140,7 +1140,8 @@ async function fetchDatabaseRecords() {
     }
 
     try {
-        const res = await fetch(`/api/records?dataset=${encodeURIComponent(dsKey)}`);
+        const sessionId = localStorage.getItem('crime_session_id') || 'default';
+        const res = await fetch(`/api/records?dataset=${encodeURIComponent(dsKey)}&session_id=${encodeURIComponent(sessionId)}`);
         if (!res.ok) {
             let detail = "Failed to load records";
             try {
@@ -1193,6 +1194,45 @@ function renderDatabaseRows(records) {
 
 function filterDatabaseTable() {
     renderDatabaseRows(allDatabaseRecords);
+}
+
+async function saveCrimeRecord(event) {
+    event.preventDefault();
+    const message = document.getElementById('record-editor-message');
+    const operation = document.getElementById('record-operation').value;
+    const sessionId = localStorage.getItem('crime_session_id') || 'default';
+    const record = {
+        case_id: document.getElementById('record-case-id').value.trim(),
+        date: document.getElementById('record-date').value || undefined,
+        district: document.getElementById('record-district').value.trim() || undefined,
+        crime_type: document.getElementById('record-crime-type').value.trim() || undefined,
+        accused_name: document.getElementById('record-accused-name').value.trim() || undefined,
+        description: document.getElementById('record-description').value.trim() || undefined
+    };
+    const cleanRecord = Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+    const body = operation === 'create'
+        ? { session_id: sessionId, record: cleanRecord }
+        : { session_id: sessionId, case_id: cleanRecord.case_id, updates: Object.fromEntries(Object.entries(cleanRecord).filter(([key]) => key !== 'case_id')) };
+    if (operation === 'update' && Object.keys(body.updates).length === 0) {
+        message.className = 'status-box error';
+        message.textContent = 'Add at least one field to update.';
+        return;
+    }
+    message.className = 'status-box info';
+    message.textContent = 'Saving record…';
+    try {
+        const response = await fetch(`/records/${operation}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'The record could not be saved.');
+        message.className = 'status-box success';
+        message.textContent = operation === 'create' ? 'Crime record added.' : 'Crime record updated.';
+        await fetchDatabaseRecords();
+    } catch (error) {
+        message.className = 'status-box error';
+        message.textContent = error.message;
+    }
 }
 
 // ==========================================================================

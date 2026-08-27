@@ -17,7 +17,7 @@ def check_access(session: Dict[str, Any], query_text: str) -> None:
     officer_district = session.get("district", "Mysuru").lower()
     
     # Senior / state-level officers have statewide access
-    if role in ["senior", "commissioner", "dgp", "state", "admin"]:
+    if role in ["senior", "senior_officer", "commissioner", "dgp", "state", "admin"]:
         return
 
     # Regular investigators are restricted to their home district

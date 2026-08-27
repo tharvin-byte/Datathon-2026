@@ -14,7 +14,9 @@ from fastapi.staticfiles import StaticFiles
 # Add backend directory to path so imports work cleanly
 sys.path.append(os.path.dirname(__file__))
 
-from routers import auth, dataset, query, session, dashboard, ws_status
+from routers import auth, dataset, query, session, dashboard, ws_status, records
+from core.rbac import require_permission
+from core.session_store import get_session
 from data.dataset_loader import load_dataset
 from routers.dataset import LOADED_DATASETS
 
@@ -52,6 +54,7 @@ app.include_router(query.router)
 app.include_router(session.router)
 app.include_router(dashboard.router)
 app.include_router(ws_status.router)
+app.include_router(records.router)
 
 # Pre-load default datasets into memory on startup
 @app.on_event("startup")
@@ -70,7 +73,8 @@ async def get_datasets_info():
     }
 
 @app.get("/api/records")
-async def get_records(dataset: str = "complex"):
+async def get_records(dataset: str = "complex", session_id: str = "default"):
+    require_permission(get_session(session_id), "records:view")
     ds_key = dataset
     if ds_key == "complex" and "active" in LOADED_DATASETS:
         ds_key = "active"

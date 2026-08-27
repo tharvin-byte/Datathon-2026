@@ -10,6 +10,7 @@ import uuid
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from core.session_store import get_session
+from core.rbac import require_permission
 from data.dataset_loader import load_dataset
 
 router = APIRouter(prefix="/dataset", tags=["Dataset"])
@@ -23,6 +24,9 @@ async def upload_dataset(
     file: UploadFile = File(...),
     session_id: str = Form("default")
 ):
+    session = get_session(session_id)
+    require_permission(session, "dataset:upload")
+
     original_filename = os.path.basename(file.filename or "dataset.csv")
     if not original_filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Only CSV dataset files are supported.")

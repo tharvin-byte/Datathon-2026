@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.encoders import jsonable_encoder
 from typing import Optional, List
 from core.session_store import get_session, SESSIONS
+from core.rbac import has_permission, require_permission
 
 router = APIRouter(prefix="/session", tags=["Session"])
 
@@ -47,6 +48,7 @@ async def get_session_state(
     fields: Optional[str] = Query(None, description="Comma-separated state keys to return")
 ):
     session = get_session(session_id)
+    require_permission(session, "history:view")
     latest_state = session.get("latest_state", {})
     if not latest_state and session.get("query_results"):
         # Grab most recent query state
@@ -85,8 +87,11 @@ async def get_session_state(
 
 @router.get("s")  # GET /sessions when mounted alongside /session
 async def list_sessions(session_id: Optional[str] = None):
+    viewer = get_session(session_id or "default")
+    require_permission(viewer, "history:view")
     sessions_list = []
-    for sid, sess in SESSIONS.items():
+    visible_sessions = SESSIONS.items() if has_permission(viewer, "session:export") else [(viewer["session_id"], viewer)]
+    for sid, sess in visible_sessions:
         query_count = len(sess.get("query_results", {}))
         last_query = ""
         if sess.get("conversation_history"):
@@ -105,6 +110,7 @@ async def list_sessions(session_id: Optional[str] = None):
 async def get_session_timeline(session_id: str):
     """Serve recorded timeline events for HTTP polling or historical viewing."""
     session = get_session(session_id)
+    require_permission(session, "agent_status:view")
     return {
         "session_id": session_id,
         "events": session.get("timeline_events", [])
@@ -117,6 +123,7 @@ async def export_session_pdf(session_id: str):
     Uses reportlab if installed, or creates a clean formatted HTML/PDF file.
     """
     session = get_session(session_id)
+    require_permission(session, "session:export")
     export_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "exports")
     os.makedirs(export_dir, exist_ok=True)
     pdf_path = os.path.join(export_dir, f"Investigation_Report_{session_id}.pdf")

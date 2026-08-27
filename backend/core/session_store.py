@@ -8,6 +8,7 @@ query history, and live WebSocket connections for real-time agent tracking.
 from typing import Dict, Any, List
 from datetime import datetime
 import uuid
+from core.rbac import normalize_role, permissions_for, role_label
 
 # In-memory session database
 SESSIONS: Dict[str, Dict[str, Any]] = {}
@@ -17,9 +18,13 @@ ACTIVE_CONNECTIONS: Dict[str, List[Any]] = {}
 def create_session(role: str, district: str) -> Dict[str, Any]:
     """Create a new user session with assigned role and jurisdiction district."""
     session_id = str(uuid.uuid4())[:8]
+    canonical_role = normalize_role(role)
     session = {
         "session_id": session_id,
-        "role": role,
+        "role": canonical_role,
+        "rank": canonical_role,
+        "role_label": role_label(canonical_role),
+        "permissions": permissions_for(canonical_role),
         "district": district,
         "created_at": datetime.now().isoformat(),
         "dataset_id": "sample",

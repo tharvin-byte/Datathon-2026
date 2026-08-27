@@ -77,19 +77,19 @@ function renderNavigation() {
 
     const navLinks = [
         { section: "OVERVIEW" },
-        { href: "dashboard.html", label: "Dashboard", icon: ICONS.dashboard },
-        { href: "index.html", label: "Command Center", icon: ICONS.home },
+        { href: "dashboard.html", label: "Dashboard", icon: ICONS.dashboard, permission: "dashboard:view" },
+        { href: "index.html", label: "Command Center", icon: ICONS.home, permission: "investigation:run" },
         
         { section: "INVESTIGATION SUITE" },
-        { href: "graph.html", label: "Syndicate Map", icon: ICONS.network },
-        { href: "trends.html", label: "Crime Spikes", icon: ICONS.chart },
-        { href: "audit.html", label: "Courtroom Audit", icon: ICONS.scale },
-        { href: "records.html", label: "Database Records", icon: ICONS.folder },
+        { href: "graph.html", label: "Syndicate Map", icon: ICONS.network, permission: "graph:view" },
+        { href: "trends.html", label: "Crime Spikes", icon: ICONS.chart, permission: "trends:view" },
+        { href: "audit.html", label: "Courtroom Audit", icon: ICONS.scale, permission: "audit:view" },
+        { href: "records.html", label: "Database Records", icon: ICONS.folder, permission: "records:view" },
         
         { section: "SYSTEM & DATA" },
-        { href: "agent_status.html", label: "Agent Timeline", icon: ICONS.bot },
-        { href: "upload.html", label: "Dataset Ingestion", icon: ICONS.upload },
-        { href: "history.html", label: "Session History", icon: ICONS.history },
+        { href: "agent_status.html", label: "Agent Timeline", icon: ICONS.bot, permission: "agent_status:view" },
+        { href: "upload.html", label: "Dataset Ingestion", icon: ICONS.upload, permission: "dataset:upload" },
+        { href: "history.html", label: "Session History", icon: ICONS.history, permission: "history:view" },
         { href: "login.html", label: "Officer Gate", icon: ICONS.lock }
     ];
 
@@ -110,7 +110,17 @@ function renderNavigation() {
         <nav class="sidebar-nav">
     `;
 
+    const rawRole = (localStorage.getItem("crime_role") || "investigator").toLowerCase();
+    const role = { state: "admin", dgp: "admin", commissioner: "senior_officer", senior: "senior_officer", inspector: "investigator", constable: "local_officer" }[rawRole] || rawRole;
+    const navPermissions = {
+        admin: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view", "dataset:upload"],
+        senior_officer: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        investigator: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        local_officer: ["dashboard:view", "investigation:run", "records:view", "history:view", "agent_status:view"]
+    };
+    const allowedPermissions = navPermissions[role] || navPermissions.local_officer;
     navLinks.forEach(item => {
+        if (item.permission && !allowedPermissions.includes(item.permission)) return;
         if (item.section) {
             navHtml += `<div class="nav-section-label">${item.section}</div>`;
         } else {

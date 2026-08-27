@@ -27,10 +27,12 @@ class ApiSmokeTests(unittest.TestCase):
         self.assertIn("No dataset loaded", response.json()["detail"])
 
     def test_non_csv_upload_is_rejected(self):
+        login = self.client.post("/auth/login", json={"role": "admin", "district": "Mysuru"})
+        admin_session = login.json()["session_id"]
         response = self.client.post(
             "/dataset/upload",
             files={"file": ("notes.txt", io.BytesIO(b"not csv"), "text/plain")},
-            data={"session_id": "smoke-test"},
+            data={"session_id": admin_session},
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("Only CSV", response.json()["detail"])

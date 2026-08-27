@@ -10,7 +10,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260826_rbac">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 
@@ -99,6 +99,13 @@
             const fileInput = document.getElementById("csvFile");
             const fileLabel = document.getElementById("fileLabel");
             const dropzone = document.querySelector(".dropzone");
+            const rawRole = (localStorage.getItem("crime_role") || "investigator").toLowerCase();
+            const currentRole = ({ state: "admin", dgp: "admin", commissioner: "senior_officer", senior: "senior_officer" }[rawRole] || rawRole);
+            if (currentRole !== "admin") {
+                const uploadPanel = document.querySelector("#uploadForm");
+                uploadPanel.innerHTML = '<div class="status-box error">Dataset ingestion is restricted to Administrators. Ask an administrator to upload the current crime dataset.</div>';
+                return;
+            }
 
             fileInput.addEventListener("change", (e) => {
                 if (fileInput.files.length > 0) {

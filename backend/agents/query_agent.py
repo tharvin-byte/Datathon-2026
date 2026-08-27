@@ -30,7 +30,19 @@ from dateutil import parser as date_parser
 # into 384-dimensional vectors. Cosine similarity between vectors tells us
 # how semantically close two pieces of text are.
 # ---------------------------------------------------------------------------
-from sklearn.metrics.pairwise import cosine_similarity
+def cosine_similarity(X, Y):
+    # Normalize X
+    norm_X = np.linalg.norm(X, axis=1, keepdims=True)
+    norm_X[norm_X == 0] = 1.0
+    X_normalized = X / norm_X
+
+    # Normalize Y
+    norm_Y = np.linalg.norm(Y, axis=1, keepdims=True)
+    norm_Y[norm_Y == 0] = 1.0
+    Y_normalized = Y / norm_Y
+
+    return np.dot(X_normalized, Y_normalized.T)
+
 from data.dataset_loader import get_embed_model, embed_texts, load_dataset
 
 # ---------------------------------------------------------------------------

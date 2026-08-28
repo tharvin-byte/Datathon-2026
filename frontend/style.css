@@ -2456,3 +2456,105 @@ html[data-theme="light"] .quick-prompts .prompt-chip:hover {
     background: #E4EFF3;
     border-color: #2F718A;
 }
+
+/* Evidence-rich graph hover details */
+.graph-hover-card {
+    position: absolute;
+    z-index: 30;
+    width: min(320px, calc(100% - 24px));
+    max-height: 230px;
+    overflow: auto;
+    padding: 14px 16px;
+    border: 1px solid rgba(148, 163, 184, .32);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, .96);
+    color: #e2e8f0;
+    box-shadow: 0 16px 34px rgba(2, 6, 23, .34);
+    backdrop-filter: blur(14px);
+    pointer-events: none;
+    font-family: var(--font-sans, Inter, sans-serif);
+    font-size: .78rem;
+    line-height: 1.45;
+}
+.graph-hover-card.is-hidden { display: none; }
+.graph-hover-card__eyebrow {
+    color: #93c5fd;
+    font-family: var(--font-mono, monospace);
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+.graph-hover-card__title {
+    margin: 2px 0 10px;
+    color: #f8fafc;
+    font-size: .98rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+.graph-hover-card__row {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 8px;
+    padding: 4px 0;
+    border-top: 1px solid rgba(148, 163, 184, .14);
+}
+.graph-hover-card__key { color: #94a3b8; }
+.graph-hover-card__value { color: #e2e8f0; overflow-wrap: anywhere; }
+html[data-theme="light"] .graph-hover-card {
+    border-color: #cbd5e1;
+    background: rgba(255, 255, 255, .98);
+    color: #172033;
+    box-shadow: 0 16px 34px rgba(23, 32, 51, .16);
+}
+html[data-theme="light"] .graph-hover-card__title { color: #172033; }
+html[data-theme="light"] .graph-hover-card__value { color: #334155; }
+html[data-theme="light"] .graph-hover-card__key { color: #64748b; }
+html[data-theme="light"] .graph-hover-card__row { border-top-color: #e2e8f0; }
+
+/* Crime Records Update editor */
+.record-editor-panel { overflow: hidden; }
+.record-editor-panel .panel-header { align-items: flex-start; }
+.record-editor-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    margin-bottom: .45rem;
+    color: var(--accent-cyan);
+    font-family: var(--font-mono, monospace);
+    font-size: .66rem;
+    font-weight: 700;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+.record-editor-kicker::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--status-low, #10b981);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, .12);
+}
+.record-editor-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 1.25rem; align-items: start; }
+.record-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.record-editor-field { display: grid; gap: .4rem; }
+.record-editor-field.full { grid-column: 1 / -1; }
+.record-editor-field label { color: var(--text-secondary); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.record-editor-field .form-input, .record-editor-field .form-select { width: 100%; min-height: 42px; }
+.record-editor-field textarea.form-input { min-height: 96px; resize: vertical; }
+.record-editor-side { padding: 1rem; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-secondary); }
+.record-editor-side h4 { margin: 0 0 .55rem; color: var(--text-primary); font-size: .85rem; }
+.record-editor-side p { margin: 0 0 .8rem; color: var(--text-secondary); font-size: .75rem; line-height: 1.55; }
+.record-editor-side code { color: var(--accent-cyan); font-family: var(--font-mono, monospace); font-size: .72rem; }
+.record-editor-actions { display: flex; align-items: center; gap: .75rem; margin-top: 1rem; }
+.record-editor-actions .btn { min-width: 140px; }
+.record-editor-message { min-height: 0; }
+@media (max-width: 850px) {
+    .record-editor-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+    .record-editor-grid { grid-template-columns: 1fr; }
+    .record-editor-field.full { grid-column: auto; }
+    .record-editor-actions { flex-direction: column; align-items: stretch; }
+}
+html[data-theme="light"] .record-editor-side { background: #f8fafc; }

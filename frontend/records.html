@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260826_institutional">
+    <link rel="stylesheet" href="style.css?v=20260826_records_final">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
@@ -41,20 +41,61 @@
                 <input type="text" id="db-search" placeholder="Search across all columns (Case ID, District, Accused, Crime Type, Description)..." oninput="filterDatabaseTable()">
             </div>
 
-            <section id="record-editor" class="panel" style="display:none; margin-bottom:1rem;">
-                <div class="panel-header"><div><h3 class="panel-title">Crime record update</h3><p class="panel-subtitle">Local officers can add or update records within their assigned district. Administrators have full access.</p></div></div>
+            <section id="record-editor" class="panel record-editor-panel" style="display:none; margin-bottom:1rem;">
+                <div class="panel-header">
+                    <div>
+                        <div class="record-editor-kicker">Controlled data entry</div>
+                        <h3 class="panel-title">Crime Records Update</h3>
+                        <p class="panel-subtitle">Record changes are validated against your rank and jurisdiction before they are saved to the active dataset.</p>
+                    </div>
+                    <span class="badge badge-success">Audited write path</span>
+                </div>
                 <div class="panel-body">
-                    <form id="record-editor-form" class="form-grid">
-                        <select id="record-operation" class="form-select"><option value="create">Add record</option><option value="update">Update record</option></select>
-                        <input id="record-case-id" class="form-input" placeholder="Case ID (required)" required>
-                        <input id="record-date" class="form-input" type="date" placeholder="Date">
-                        <input id="record-district" class="form-input" placeholder="District">
-                        <input id="record-crime-type" class="form-input" placeholder="Crime type">
-                        <input id="record-accused-name" class="form-input" placeholder="Accused name">
-                        <textarea id="record-description" class="form-input" rows="2" placeholder="Observation or narrative description"></textarea>
-                        <button class="btn btn-primary" type="submit">Save record</button>
-                    </form>
-                    <div id="record-editor-message" class="status-box hidden" style="margin-top:.8rem"></div>
+                    <div class="record-editor-layout">
+                        <form id="record-editor-form">
+                            <div class="record-editor-grid">
+                                <div class="record-editor-field">
+                                    <label for="record-operation">Action</label>
+                                    <select id="record-operation" class="form-select"><option value="create">Add new crime record</option><option value="update">Update existing record</option></select>
+                                </div>
+                                <div class="record-editor-field">
+                                    <label for="record-case-id">Case ID</label>
+                                    <input id="record-case-id" class="form-input" placeholder="e.g. C-2026-0142" required>
+                                </div>
+                                <div class="record-editor-field">
+                                    <label for="record-date">Incident date</label>
+                                    <input id="record-date" class="form-input" type="date">
+                                </div>
+                                <div class="record-editor-field">
+                                    <label for="record-district">District</label>
+                                    <input id="record-district" class="form-input" placeholder="Assigned district">
+                                </div>
+                                <div class="record-editor-field">
+                                    <label for="record-crime-type">Crime type</label>
+                                    <input id="record-crime-type" class="form-input" placeholder="e.g. Burglary">
+                                </div>
+                                <div class="record-editor-field">
+                                    <label for="record-accused-name">Accused name</label>
+                                    <input id="record-accused-name" class="form-input" placeholder="Full name, if known">
+                                </div>
+                                <div class="record-editor-field full">
+                                    <label for="record-description">Incident narrative</label>
+                                    <textarea id="record-description" class="form-input" rows="3" placeholder="Add a concise, factual description of the incident..."></textarea>
+                                </div>
+                            </div>
+                            <div class="record-editor-actions">
+                                <button class="btn btn-primary" type="submit">Save record securely</button>
+                                <span class="form-help">The server validates permissions and persists the change to the active CSV-backed dataset.</span>
+                            </div>
+                            <div id="record-editor-message" class="status-box record-editor-message hidden" style="margin-top:.8rem"></div>
+                        </form>
+                        <aside class="record-editor-side">
+                            <h4>Before you save</h4>
+                            <p>Use <strong>Add</strong> for a new case. Use <strong>Update</strong> with an existing Case ID to amend selected fields.</p>
+                            <p>Local Officers are limited to their assigned district. Administrators can manage all jurisdictions.</p>
+                            <p><code>POST /records/create</code><br><code>POST /records/update</code></p>
+                        </aside>
+                    </div>
                 </div>
             </section>
 

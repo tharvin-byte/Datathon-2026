@@ -8,6 +8,8 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import pandas as pd
+import os
+import tempfile
 
 from core.access_gate import check_access
 from core.rbac import require_permission
@@ -55,6 +57,22 @@ def _refresh_dataset(dataset: dict) -> None:
     dataset["descriptions"] = descriptions
     dataset["desc_embeddings"] = embed_texts(descriptions, fit=True)
     dataset["known_names"] = df["accused_name"].dropna().unique().tolist() if "accused_name" in df.columns else []
+    source_path = dataset.get("source_path")
+    if source_path:
+        directory = os.path.dirname(source_path) or "."
+        fd, temp_path = tempfile.mkstemp(prefix=".crime-records-", suffix=".csv", dir=directory, text=True)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+                df.to_csv(handle, index=False)
+            os.replace(temp_path, source_path)
+        except Exception:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise HTTPException(status_code=500, detail="Record changed in memory but could not be persisted to the dataset file.")
     conn = dataset.get("conn")
     if conn is not None:
         df.to_sql("cases", conn, index=False, if_exists="replace")

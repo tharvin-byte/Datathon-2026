@@ -74,6 +74,11 @@ class RbacTests(unittest.TestCase):
         )
         self.assertEqual(updated.status_code, 200)
         self.assertEqual(updated.json()["record"]["crime_type"], "Robbery")
+        dataset_id = updated.json()["dataset_id"]
+        source_path = LOADED_DATASETS[dataset_id]["source_path"]
+        with open(source_path, encoding="utf-8") as handle:
+            persisted_csv = handle.read()
+        self.assertIn("Robbery", persisted_csv)
 
     def test_local_officer_reads_only_home_district_records(self):
         admin = self.login("admin")

@@ -777,6 +777,61 @@ function renderNetworkGraph(graphData, containerId = 'network-graph-container') 
 
     networkInstance = new vis.Network(container, data, options);
 
+    // ── Evidence-rich hover card ─────────────────────────────────────────────
+    const nodeLookup = new Map(graphData.nodes.map(node => [String(node.id), node]));
+    const hoverCard = document.createElement('div');
+    hoverCard.className = 'graph-hover-card is-hidden';
+    container.appendChild(hoverCard);
+
+    const escapeGraphValue = value => String(value ?? '').replace(/[&<>\"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[char]));
+    const detailRow = (key, value) => `<div class="graph-hover-card__row"><span class="graph-hover-card__key">${escapeGraphValue(key)}</span><span class="graph-hover-card__value">${escapeGraphValue(value)}</span></div>`;
+    const positionHoverCard = pointer => {
+        const point = pointer && (pointer.DOM || pointer.canvas);
+        if (!point) return;
+        const cardWidth = Math.min(320, Math.max(220, container.clientWidth - 24));
+        const left = Math.max(12, Math.min(point.x + 16, container.clientWidth - cardWidth - 12));
+        const top = Math.max(12, Math.min(point.y + 16, container.clientHeight - 245));
+        hoverCard.style.left = `${left}px`;
+        hoverCard.style.top = `${top}px`;
+    };
+    const showHoverCard = (kind, title, rows, pointer) => {
+        hoverCard.innerHTML = `<div class="graph-hover-card__eyebrow">${escapeGraphValue(kind)}</div><div class="graph-hover-card__title">${escapeGraphValue(title)}</div>${rows.filter(row => row[1] !== undefined && row[1] !== null && String(row[1]).trim() !== '').map(row => detailRow(row[0], row[1])).join('')}`;
+        hoverCard.classList.remove('is-hidden');
+        positionHoverCard(pointer);
+    };
+    const hideHoverCard = () => hoverCard.classList.add('is-hidden');
+
+    networkInstance.on('hoverNode', params => {
+        const node = nodeLookup.get(String(params.node));
+        if (!node) return;
+        const label = node.label || node.name || node.id;
+        const type = node.type || 'entity';
+        showHoverCard('Network entity', label, [
+            ['Type', type],
+            ['Case', node.case_id],
+            ['District', node.district],
+            ['Crime', node.crime_type],
+            ['Evidence', node.basis],
+            ['Details', node.description],
+            ['Identifier', node.id]
+        ], params.pointer);
+    });
+    networkInstance.on('hoverEdge', params => {
+        const edge = graphData.edges[Number(String(params.edge).replace('edge_', ''))];
+        if (!edge) return;
+        const source = nodeLookup.get(String(edge.source));
+        const target = nodeLookup.get(String(edge.target));
+        showHoverCard('Relationship evidence', edge.basis || edge.label || 'Linked entities', [
+            ['From', source?.label || edge.source],
+            ['To', target?.label || edge.target],
+            ['Relationship', edge.basis || edge.relationship || edge.label],
+            ['Source ID', edge.source],
+            ['Target ID', edge.target]
+        ], params.pointer);
+    });
+    networkInstance.on('blurNode', hideHoverCard);
+    networkInstance.on('blurEdge', hideHoverCard);
+
     // ── Stats overlay ───────────────────────────────────────────────────────
     const statsBar = document.createElement('div');
     statsBar.className = 'graph-stats-bar';

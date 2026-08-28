@@ -157,5 +157,6 @@ def load_dataset(csv_path: str) -> dict:
         "known_names": known_names,
         "has_description_column": "description" in df.columns,
         "columns": list(df.columns),
-        "row_count": len(df)
+        "row_count": len(df),
+        "source_path": os.path.abspath(csv_path)
     }

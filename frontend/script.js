@@ -679,11 +679,6 @@ function renderNetworkGraph(graphData, containerId = 'network-graph-container') 
         return {
             id: n.id,
             label: label.length > 18 ? label.substring(0, 16) + '…' : label,
-            title: `<div style="background:#131830;border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:8px 12px;font-family:Inter,sans-serif;font-size:12px;color:#f8fafc;max-width:200px;">
-                        <strong style="color:#c4b5fd">${label}</strong><br>
-                        <span style="color:#94a3b8;font-size:11px;">Type: ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
-                        ${n.case_id ? `<br><span style="color:#94a3b8;font-size:11px;">Case: ${n.case_id}</span>` : ''}
-                    </div>`,
             shape: style.shape,
             size: style.size,
             color: {
@@ -722,7 +717,6 @@ function renderNetworkGraph(graphData, containerId = 'network-graph-container') 
             from: e.source,
             to: e.target,
             label: e.basis || '',
-            title: e.basis ? `<div style="background:#131830;border:1px solid rgba(139,92,246,0.35);border-radius:6px;padding:6px 10px;font-size:11px;color:#94a3b8;">${e.basis}</div>` : '',
             color: { ...ec, opacity: 0.85 },
             font: {
                 color: '#64748b',

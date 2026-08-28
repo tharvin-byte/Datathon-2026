@@ -3,6 +3,7 @@
 // and auto-highlights the current active page while syncing session/role metadata.
 
 document.addEventListener("DOMContentLoaded", () => {
+    enforcePagePermissions();
     applySavedTheme();
     renderNavigation();
     loadSessionMeta();
@@ -32,6 +33,53 @@ function initThemeToggle() {
     updateLabel();
 }
 
+function enforcePagePermissions() {
+    let currentPath = window.location.pathname.split("/").pop() || "index.html";
+    if (currentPath === "" || currentPath === "/") currentPath = "index.html";
+
+    // login.html is always accessible
+    if (currentPath === "login.html") return;
+
+    const rawRole = (localStorage.getItem("crime_role") || "investigator").toLowerCase();
+    const role = { state: "admin", dgp: "admin", commissioner: "senior_officer", senior: "senior_officer", inspector: "investigator", constable: "local_officer" }[rawRole] || rawRole;
+
+    const navPermissions = {
+        admin: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view", "dataset:upload"],
+        senior_officer: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        investigator: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        local_officer: ["dashboard:view", "investigation:run", "records:view", "history:view", "agent_status:view"]
+    };
+
+    const allowedPermissions = navPermissions[role] || navPermissions.local_officer;
+
+    const pagePermissions = {
+        "dashboard.html": "dashboard:view",
+        "index.html": "investigation:run",
+        "graph.html": "graph:view",
+        "trends.html": "trends:view",
+        "audit.html": "audit:view",
+        "records.html": "records:view",
+        "agent_status.html": "agent_status:view",
+        "upload.html": "dataset:upload",
+        "history.html": "history:view"
+    };
+
+    const requiredPermission = pagePermissions[currentPath];
+    if (requiredPermission && !allowedPermissions.includes(requiredPermission)) {
+        window.location.href = "dashboard.html";
+        return;
+    }
+
+    if (currentPath === "index.html" && role === "local_officer") {
+        const handle = document.getElementById("panel-resize-handle");
+        const intelPanel = document.getElementById("intel-panel");
+        const workspace = document.getElementById("workspace");
+        if (handle) handle.style.display = "none";
+        if (intelPanel) intelPanel.style.display = "none";
+        if (workspace) workspace.style.gridTemplateColumns = "1fr";
+    }
+}
+
 // SVG Icons (Lucide vector paths)
 const ICONS = {
     shield: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
@@ -48,14 +96,12 @@ const ICONS = {
 };
 
 function renderNavigation() {
-    // Check if target container exists or if we need to replace existing header/sidebar
     let sidebarContainer = document.getElementById("sidebar-container");
     if (!sidebarContainer) {
         sidebarContainer = document.querySelector("aside.sidebar");
     }
 
     if (!sidebarContainer) {
-        // If still no aside, look for old horizontal header.navbar to convert
         const oldHeader = document.querySelector("header.navbar");
         if (oldHeader) {
             sidebarContainer = document.createElement("aside");
@@ -64,14 +110,13 @@ function renderNavigation() {
             oldHeader.parentNode.insertBefore(sidebarContainer, oldHeader);
             oldHeader.remove();
         } else {
-            return; // No insertion point found
+            return;
         }
     } else {
         sidebarContainer.className = "sidebar";
         sidebarContainer.id = "sidebar-container";
     }
 
-    // Determine active page
     let currentPath = window.location.pathname.split("/").pop() || "index.html";
     if (currentPath === "" || currentPath === "/") currentPath = "index.html";
 
@@ -119,8 +164,25 @@ function renderNavigation() {
         local_officer: ["dashboard:view", "investigation:run", "records:view", "history:view", "agent_status:view"]
     };
     const allowedPermissions = navPermissions[role] || navPermissions.local_officer;
+
+    const visibleLinks = [];
+    let currentSection = null;
     navLinks.forEach(item => {
-        if (item.permission && !allowedPermissions.includes(item.permission)) return;
+        if (item.section) {
+            currentSection = item;
+        } else {
+            const hasPerm = !item.permission || allowedPermissions.includes(item.permission);
+            if (hasPerm) {
+                if (currentSection) {
+                    visibleLinks.push(currentSection);
+                    currentSection = null;
+                }
+                visibleLinks.push(item);
+            }
+        }
+    });
+
+    visibleLinks.forEach(item => {
         if (item.section) {
             navHtml += `<div class="nav-section-label">${item.section}</div>`;
         } else {

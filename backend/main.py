@@ -60,6 +60,24 @@ app.include_router(records.router)
 @app.on_event("startup")
 def startup_event():
     print("Platform initialized with clean empty dataset cache. Ready for custom dataset ingestion.")
+    project_root = os.path.dirname(os.path.dirname(__file__))
+    default_csv = os.path.join(project_root, "complex_500_dataset.csv")
+    if not os.path.exists(default_csv):
+        default_csv = os.path.join(project_root, "massive_realworld_syndicates.csv")
+        
+    if os.path.exists(default_csv):
+        try:
+            print(f"Pre-loading default dataset from: {default_csv}")
+            loaded = load_dataset(default_csv)
+            LOADED_DATASETS["default"] = loaded
+            LOADED_DATASETS["active"] = loaded
+            LOADED_DATASETS["complex"] = loaded
+            LOADED_DATASETS["sample"] = loaded
+            print(f"Default dataset preloaded successfully. Row count: {loaded['row_count']}")
+        except Exception as e:
+            print(f"Failed to preload default dataset: {e}")
+    else:
+        print("No default dataset CSV found in project root to pre-load.")
 
 # Backward-compatibility API endpoints for earlier frontends/tests
 @app.get("/api/datasets")

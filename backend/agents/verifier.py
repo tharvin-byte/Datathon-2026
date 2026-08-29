@@ -35,11 +35,10 @@ import re
 import time
 
 try:
-    import google.generativeai as genai
+    from core.llm_client import get_generative_model
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    genai = None
 
 
 # ===================================================================
@@ -298,11 +297,15 @@ Reply with ONLY a valid JSON array — no preamble, no explanation outside the a
 def verify_with_gemini(claims: list[dict], records: list[dict]) -> list[dict]:
     """Use Gemini to semantically verify claims against records."""
     _verifier_key = os.environ.get("GEMINI_API_KEY_VERIFIER") or os.environ.get("GEMINI_API_KEY")
-    genai.configure(api_key=_verifier_key)
-    model = genai.GenerativeModel(
-        "gemini-3.1-flash-lite",
-        system_instruction=VERIFIER_PROMPT,
-    )
+    try:
+        model = get_generative_model(
+            "gemini-3.1-flash-lite",
+            system_instruction=VERIFIER_PROMPT,
+            api_key_env_var="GEMINI_API_KEY_VERIFIER"
+        )
+    except Exception as e:
+        print(f"[Verifier] Failed to initialize model: {e}")
+        return []
 
     # Prepare records summary (trim descriptions for token efficiency)
     records_summary = []

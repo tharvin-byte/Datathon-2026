@@ -35,7 +35,7 @@ class OpenRouterModel:
 
         # Safeguard: limit max_tokens to prevent 402 Payment Required for users
         # with low credit balances, because OpenRouter otherwise requests/reserves 65k tokens.
-        max_tokens = 4000
+        max_tokens = 2000
         
         payload = {
             "model": self.model_name,
@@ -46,6 +46,13 @@ class OpenRouterModel:
         logger.info(f"[OpenRouterModel] Invoking {self.model_name}...")
         response = requests.post(url, headers=headers, json=payload)
         
+        # If we hit 402 Payment Required, or a credit-related bad request (some models might throw 400),
+        # automatically fallback to openrouter/free router.
+        if response.status_code == 402 or (response.status_code == 400 and "credit" in response.text.lower()):
+            logger.warning(f"[OpenRouterModel] Credit limit hit. Retrying with openrouter/free fallback...")
+            payload["model"] = "openrouter/free"
+            response = requests.post(url, headers=headers, json=payload)
+
         if response.status_code != 200:
             logger.error(f"[OpenRouterModel] Error response {response.status_code}: {response.text}")
             raise Exception(f"OpenRouter API returned error {response.status_code}: {response.text}")

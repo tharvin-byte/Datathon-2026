@@ -435,6 +435,13 @@ def planner_agent(state: dict) -> dict:
         print("[Planner] No Gemini API key — using rule-based planning")
         state = _rule_based_plan(state, query, completed_agents, planner_log)
 
+    # --- Force run link_agent if query_agent ran and found records ---
+    # This guarantees that the syndicate map is always dynamically updated and populated
+    if "query_agent" in completed_agents and state.get("records_found") and "link_agent" not in completed_agents:
+        print("[Planner] Force running link_agent to generate the dynamic syndicate network graph.")
+        state = link_agent(state)
+        completed_agents.add("link_agent")
+
     # --- Final state updates ---
     state["planner_log"] = planner_log
     state["agents_used"] = list(completed_agents)

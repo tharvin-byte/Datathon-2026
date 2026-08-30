@@ -439,11 +439,24 @@ async function executeInvestigation() {
         // uploaded into the active session.
         if (datasetSelectEl) requestBody.dataset = datasetVal;
 
-        const response = await fetch('/api/investigate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-        });
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 90000);
+        let response;
+        try {
+            response = await fetch('/api/investigate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+                signal: controller.signal
+            });
+        } catch (requestError) {
+            if (requestError.name === 'AbortError') {
+                throw new Error('The investigation timed out after 90 seconds. Check the dataset and try again.');
+            }
+            throw new Error('The backend is unavailable. Confirm the server is running and try again.');
+        } finally {
+            window.clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
             let detail = 'API request failed.';
@@ -575,9 +588,14 @@ function appendMessage(content, sender, agentsMeta) {
         ? buildAgentTelemetryBar(agentsMeta.agents, agentsMeta.verificationRate)
         : '';
 
+    // User and error strings are plain text; only the locally formatted AI
+    // response is allowed to contain presentation markup.
+    const renderedContent = sender === 'ai' || sender === 'system-loading'
+        ? content
+        : escapeHtml(String(content));
     msgDiv.innerHTML = `
         <div class="msg-avatar">${avatar}</div>
-        <div class="msg-content">${content}${telemetryHTML}</div>
+        <div class="msg-content">${renderedContent}${telemetryHTML}</div>
     `;
 
     chatHistory.appendChild(msgDiv);
@@ -589,9 +607,16 @@ function removeLoadingMessage() {
     if (loadingBubble) loadingBubble.remove();
 }
 
-// Basic Markdown to HTML formatting for Composer Output
+function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+    }[character]));
+}
+
+// Basic Markdown to HTML formatting for Composer Output. Escape first so
+// generated text cannot introduce scripts or arbitrary attributes.
 function formatMarkdownToHTML(md) {
-    return md
+    return escapeHtml(String(md || ''))
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
@@ -654,11 +679,6 @@ function renderNetworkGraph(graphData, containerId = 'network-graph-container') 
         return {
             id: n.id,
             label: label.length > 18 ? label.substring(0, 16) + '…' : label,
-            title: `<div style="background:#131830;border:1px solid rgba(139,92,246,0.4);border-radius:8px;padding:8px 12px;font-family:Inter,sans-serif;font-size:12px;color:#f8fafc;max-width:200px;">
-                        <strong style="color:#c4b5fd">${label}</strong><br>
-                        <span style="color:#94a3b8;font-size:11px;">Type: ${type.charAt(0).toUpperCase() + type.slice(1)}</span>
-                        ${n.case_id ? `<br><span style="color:#94a3b8;font-size:11px;">Case: ${n.case_id}</span>` : ''}
-                    </div>`,
             shape: style.shape,
             size: style.size,
             color: {
@@ -697,7 +717,6 @@ function renderNetworkGraph(graphData, containerId = 'network-graph-container') 
             from: e.source,
             to: e.target,
             label: e.basis || '',
-            title: e.basis ? `<div style="background:#131830;border:1px solid rgba(139,92,246,0.35);border-radius:6px;padding:6px 10px;font-size:11px;color:#94a3b8;">${e.basis}</div>` : '',
             color: { ...ec, opacity: 0.85 },
             font: {
                 color: '#64748b',
@@ -751,6 +770,61 @@ function renderNetworkGraph(graphData, containerId = 'network-graph-container') 
     };
 
     networkInstance = new vis.Network(container, data, options);
+
+    // ── Evidence-rich hover card ─────────────────────────────────────────────
+    const nodeLookup = new Map(graphData.nodes.map(node => [String(node.id), node]));
+    const hoverCard = document.createElement('div');
+    hoverCard.className = 'graph-hover-card is-hidden';
+    container.appendChild(hoverCard);
+
+    const escapeGraphValue = value => String(value ?? '').replace(/[&<>\"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[char]));
+    const detailRow = (key, value) => `<div class="graph-hover-card__row"><span class="graph-hover-card__key">${escapeGraphValue(key)}</span><span class="graph-hover-card__value">${escapeGraphValue(value)}</span></div>`;
+    const positionHoverCard = pointer => {
+        const point = pointer && (pointer.DOM || pointer.canvas);
+        if (!point) return;
+        const cardWidth = Math.min(320, Math.max(220, container.clientWidth - 24));
+        const left = Math.max(12, Math.min(point.x + 16, container.clientWidth - cardWidth - 12));
+        const top = Math.max(12, Math.min(point.y + 16, container.clientHeight - 245));
+        hoverCard.style.left = `${left}px`;
+        hoverCard.style.top = `${top}px`;
+    };
+    const showHoverCard = (kind, title, rows, pointer) => {
+        hoverCard.innerHTML = `<div class="graph-hover-card__eyebrow">${escapeGraphValue(kind)}</div><div class="graph-hover-card__title">${escapeGraphValue(title)}</div>${rows.filter(row => row[1] !== undefined && row[1] !== null && String(row[1]).trim() !== '').map(row => detailRow(row[0], row[1])).join('')}`;
+        hoverCard.classList.remove('is-hidden');
+        positionHoverCard(pointer);
+    };
+    const hideHoverCard = () => hoverCard.classList.add('is-hidden');
+
+    networkInstance.on('hoverNode', params => {
+        const node = nodeLookup.get(String(params.node));
+        if (!node) return;
+        const label = node.label || node.name || node.id;
+        const type = node.type || 'entity';
+        showHoverCard('Network entity', label, [
+            ['Type', type],
+            ['Case', node.case_id],
+            ['District', node.district],
+            ['Crime', node.crime_type],
+            ['Evidence', node.basis],
+            ['Details', node.description],
+            ['Identifier', node.id]
+        ], params.pointer);
+    });
+    networkInstance.on('hoverEdge', params => {
+        const edge = graphData.edges[Number(String(params.edge).replace('edge_', ''))];
+        if (!edge) return;
+        const source = nodeLookup.get(String(edge.source));
+        const target = nodeLookup.get(String(edge.target));
+        showHoverCard('Relationship evidence', edge.basis || edge.label || 'Linked entities', [
+            ['From', source?.label || edge.source],
+            ['To', target?.label || edge.target],
+            ['Relationship', edge.basis || edge.relationship || edge.label],
+            ['Source ID', edge.source],
+            ['Target ID', edge.target]
+        ], params.pointer);
+    });
+    networkInstance.on('blurNode', hideHoverCard);
+    networkInstance.on('blurEdge', hideHoverCard);
 
     // ── Stats overlay ───────────────────────────────────────────────────────
     const statsBar = document.createElement('div');
@@ -1115,7 +1189,8 @@ async function fetchDatabaseRecords() {
     }
 
     try {
-        const res = await fetch(`/api/records?dataset=${encodeURIComponent(dsKey)}`);
+        const sessionId = localStorage.getItem('crime_session_id') || 'default';
+        const res = await fetch(`/api/records?dataset=${encodeURIComponent(dsKey)}&session_id=${encodeURIComponent(sessionId)}`);
         if (!res.ok) {
             let detail = "Failed to load records";
             try {
@@ -1168,6 +1243,45 @@ function renderDatabaseRows(records) {
 
 function filterDatabaseTable() {
     renderDatabaseRows(allDatabaseRecords);
+}
+
+async function saveCrimeRecord(event) {
+    event.preventDefault();
+    const message = document.getElementById('record-editor-message');
+    const operation = document.getElementById('record-operation').value;
+    const sessionId = localStorage.getItem('crime_session_id') || 'default';
+    const record = {
+        case_id: document.getElementById('record-case-id').value.trim(),
+        date: document.getElementById('record-date').value || undefined,
+        district: document.getElementById('record-district').value.trim() || undefined,
+        crime_type: document.getElementById('record-crime-type').value.trim() || undefined,
+        accused_name: document.getElementById('record-accused-name').value.trim() || undefined,
+        description: document.getElementById('record-description').value.trim() || undefined
+    };
+    const cleanRecord = Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+    const body = operation === 'create'
+        ? { session_id: sessionId, record: cleanRecord }
+        : { session_id: sessionId, case_id: cleanRecord.case_id, updates: Object.fromEntries(Object.entries(cleanRecord).filter(([key]) => key !== 'case_id')) };
+    if (operation === 'update' && Object.keys(body.updates).length === 0) {
+        message.className = 'status-box error';
+        message.textContent = 'Add at least one field to update.';
+        return;
+    }
+    message.className = 'status-box info';
+    message.textContent = 'Saving record…';
+    try {
+        const response = await fetch(`/records/${operation}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'The record could not be saved.');
+        message.className = 'status-box success';
+        message.textContent = operation === 'create' ? 'Crime record added.' : 'Crime record updated.';
+        await fetchDatabaseRecords();
+    } catch (error) {
+        message.className = 'status-box error';
+        message.textContent = error.message;
+    }
 }
 
 // ==========================================================================

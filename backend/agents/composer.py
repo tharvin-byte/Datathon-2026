@@ -35,11 +35,10 @@ from datetime import datetime
 
 try:
     # pyrefly: ignore [missing-import]
-    import google.generativeai as genai
+    from core.llm_client import get_generative_model
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    genai = None
 
 
 # ===================================================================
@@ -263,10 +262,8 @@ Every specific claim — a name, a case ID, a date, a location, a connection —
 def compose_with_gemini(state: dict, language: str) -> str:
     """Use Gemini to write a natural, comprehensive intelligence briefing."""
     _composer_key = os.environ.get("GEMINI_API_KEY_COMPOSER") or os.environ.get("GEMINI_API_KEY")
-    if not genai or not _composer_key:
+    if not GEMINI_AVAILABLE or not _composer_key:
         return compose_template_answer(state, language)
-
-    genai.configure(api_key=_composer_key)
 
     language_name = "Kannada" if language == "kn" else "English"
     prompt_text = COMPOSER_PROMPT.format(
@@ -274,10 +271,15 @@ def compose_with_gemini(state: dict, language: str) -> str:
         language_code=language,
     )
 
-    model = genai.GenerativeModel(
-        "gemini-3.1-flash-lite",
-        system_instruction=prompt_text,
-    )
+    try:
+        model = get_generative_model(
+            "gemini-3.1-flash-lite",
+            system_instruction=prompt_text,
+            api_key_env_var="GEMINI_API_KEY_COMPOSER"
+        )
+    except Exception as e:
+        print(f"[Composer] Failed to initialize model: {e}")
+        return compose_template_answer(state, language)
 
     # Build an extensive summary of findings for Gemini without truncating descriptions at 150 chars
     findings_summary = {

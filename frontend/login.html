@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20260826_institutional">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body class="dark-theme login-body">
@@ -28,11 +28,12 @@
                         <div class="form-group">
                             <label for="roleSelect">Officer Access Level / Role</label>
                             <select id="roleSelect" class="form-select" required>
-                                <option value="investigator">Local Investigator (Single Jurisdiction Restricted)</option>
-                                <option value="senior">Senior Superintendent of Police (Statewide Access)</option>
-                                <option value="state">State Crime Records Bureau / DGP (Admin & Full Access)</option>
+                                <option value="local_officer">Local Officer / Constable (District Records + Updates)</option>
+                                <option value="investigator">Investigator / Inspector (District Intelligence)</option>
+                                <option value="senior_officer">Senior Officer (Statewide Intelligence)</option>
+                                <option value="admin">Administrator (Full Access)</option>
                             </select>
-                            <small class="form-help">Local Investigators are blocked by the Access Gate from querying records outside their home district.</small>
+                            <small class="form-help">Access is enforced by rank. Local officers can update records in their district; only administrators can upload datasets.</small>
                         </div>
 
                         <div class="form-group mt-3">
@@ -92,6 +93,8 @@
                         localStorage.setItem("crime_session_id", data.session_id);
                         localStorage.setItem("crime_role", data.role);
                         localStorage.setItem("crime_district", data.district);
+                        localStorage.setItem("crime_role_label", data.role_label || data.role || role);
+                        localStorage.setItem("crime_permissions", JSON.stringify(data.permissions || []));
                         
                         msg.classList.remove("info");
                         msg.classList.add("success");
@@ -112,6 +115,7 @@
                     localStorage.setItem("crime_session_id", fallbackSid);
                     localStorage.setItem("crime_role", role);
                     localStorage.setItem("crime_district", district);
+                    localStorage.setItem("crime_role_label", role);
                     
                     setTimeout(() => {
                         window.location.href = "dashboard.html";

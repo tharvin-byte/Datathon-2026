@@ -14,7 +14,9 @@ from fastapi.staticfiles import StaticFiles
 # Add backend directory to path so imports work cleanly
 sys.path.append(os.path.dirname(__file__))
 
-from routers import auth, dataset, query, session, dashboard, ws_status
+from routers import auth, dataset, query, session, dashboard, ws_status, records
+from core.rbac import require_permission, normalize_role
+from core.session_store import get_session
 from data.dataset_loader import load_dataset
 from routers.dataset import LOADED_DATASETS
 
@@ -34,13 +36,15 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Enable CORS for frontend requests
+# Keep browser access explicit. Same-origin deployment needs no CORS, while local
+# development can opt into additional origins with CORS_ORIGINS.
+_cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://127.0.0.1:8001,http://localhost:8001").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # Include all Phase 2 routers
@@ -50,11 +54,30 @@ app.include_router(query.router)
 app.include_router(session.router)
 app.include_router(dashboard.router)
 app.include_router(ws_status.router)
+app.include_router(records.router)
 
 # Pre-load default datasets into memory on startup
 @app.on_event("startup")
 def startup_event():
     print("Platform initialized with clean empty dataset cache. Ready for custom dataset ingestion.")
+    project_root = os.path.dirname(os.path.dirname(__file__))
+    default_csv = os.path.join(project_root, "complex_500_dataset.csv")
+    if not os.path.exists(default_csv):
+        default_csv = os.path.join(project_root, "massive_realworld_syndicates.csv")
+        
+    if os.path.exists(default_csv):
+        try:
+            print(f"Pre-loading default dataset from: {default_csv}")
+            loaded = load_dataset(default_csv)
+            LOADED_DATASETS["default"] = loaded
+            LOADED_DATASETS["active"] = loaded
+            LOADED_DATASETS["complex"] = loaded
+            LOADED_DATASETS["sample"] = loaded
+            print(f"Default dataset preloaded successfully. Row count: {loaded['row_count']}")
+        except Exception as e:
+            print(f"Failed to preload default dataset: {e}")
+    else:
+        print("No default dataset CSV found in project root to pre-load.")
 
 # Backward-compatibility API endpoints for earlier frontends/tests
 @app.get("/api/datasets")
@@ -68,7 +91,8 @@ async def get_datasets_info():
     }
 
 @app.get("/api/records")
-async def get_records(dataset: str = "complex"):
+async def get_records(dataset: str = "complex", session_id: str = "default"):
+    require_permission(get_session(session_id), "records:view")
     ds_key = dataset
     if ds_key == "complex" and "active" in LOADED_DATASETS:
         ds_key = "active"
@@ -78,6 +102,10 @@ async def get_records(dataset: str = "complex"):
         raise HTTPException(status_code=500, detail="No dataset loaded.")
         
     df = LOADED_DATASETS[ds_key]["df"]
+    role = normalize_role(get_session(session_id).get("role"))
+    if role in {"local_officer", "investigator"} and "district" in df.columns:
+        district = str(get_session(session_id).get("district", "")).strip().lower()
+        df = df[df["district"].astype(str).str.strip().str.lower() == district]
     records_list = df.fillna("").to_dict(orient="records")
     return {
         "dataset": ds_key,

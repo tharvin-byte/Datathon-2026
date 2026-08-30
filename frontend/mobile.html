@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KSP Crime AI — Officer App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=20260826_institutional">
+    <style>
+        body { background: var(--bg-primary); }
+        .officer-app { max-width: 680px; min-height: 100vh; margin: 0 auto; padding: 1rem 1rem 6.5rem; }
+        .officer-topbar, .duty-card, .mobile-card, .mobile-action, .mobile-alert { border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 14px; }
+        .officer-topbar { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1rem; margin-bottom: 1.2rem; }
+        .officer-brand { color: var(--text-primary); font-weight: 700; letter-spacing: .04em; }
+        .officer-caption { color: var(--text-muted); font-size: .72rem; margin-top: .2rem; }
+        .icon-button { width: 38px; height: 38px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-elevated); color: var(--text-primary); cursor: pointer; }
+        .welcome h1 { font-size: 1.55rem; margin-bottom: .35rem; }
+        .welcome p { color: var(--text-secondary); line-height: 1.5; margin-bottom: 1rem; }
+        .duty-card { display: flex; justify-content: space-between; align-items: center; padding: 1rem; margin-bottom: 1.2rem; background: #182A35; }
+        .duty-label { color: var(--text-muted); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+        .duty-value { margin-top: .35rem; font-weight: 600; }
+        .status-pill { color: #83C9A9; background: #172B24; border: 1px solid #3D8B6D; border-radius: 999px; padding: .35rem .65rem; font-size: .72rem; font-weight: 700; }
+        .section-heading { display: flex; justify-content: space-between; align-items: center; margin: 1.4rem 0 .7rem; }
+        .section-heading h2 { font-size: .82rem; color: var(--text-secondary); letter-spacing: .08em; text-transform: uppercase; }
+        .mobile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
+        .mobile-action { padding: 1rem; min-height: 96px; text-align: left; color: var(--text-primary); cursor: pointer; transition: background .2s, border-color .2s; }
+        .mobile-action:hover { background: var(--surface-elevated); border-color: var(--accent-cyan); }
+        .mobile-action strong { display: block; margin-bottom: .35rem; }
+        .mobile-action span { color: var(--text-muted); font-size: .78rem; line-height: 1.35; }
+        .mobile-card { padding: 1rem; }
+        .mobile-card p { color: var(--text-secondary); line-height: 1.45; font-size: .88rem; }
+        .mobile-alert { display: flex; gap: .7rem; padding: .85rem; margin-bottom: .6rem; background: #302717; border-color: #6D552C; }
+        .alert-mark { color: #E4B66A; font-weight: 700; }
+        .mobile-alert strong { display: block; font-size: .86rem; margin-bottom: .2rem; }
+        .mobile-alert span { color: var(--text-secondary); font-size: .78rem; }
+        .mobile-query { display: none; margin-top: .75rem; }
+        .mobile-query textarea { width: 100%; min-height: 94px; padding: .8rem; resize: vertical; border: 1px solid var(--border-color); border-radius: 10px; background: var(--surface-elevated); color: var(--text-primary); font: inherit; }
+        .mobile-query button { width: 100%; margin-top: .6rem; padding: .75rem; border: 1px solid #5FA2BA; border-radius: 10px; background: var(--accent-blue); color: white; font-weight: 700; cursor: pointer; }
+        .mobile-answer { margin-top: .8rem; white-space: pre-wrap; color: var(--text-secondary); font-size: .86rem; line-height: 1.5; }
+        .bottom-nav { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(680px, 100%); display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; padding: .65rem .7rem calc(.65rem + env(safe-area-inset-bottom)); background: rgba(15,24,40,.98); border-top: 1px solid var(--border-color); }
+        .bottom-nav button { border: 0; background: transparent; color: var(--text-muted); padding: .45rem .2rem; font: inherit; font-size: .72rem; cursor: pointer; }
+        .bottom-nav button.active, .bottom-nav button:hover { color: var(--accent-cyan); }
+        @media (min-width: 768px) { .officer-app { padding-top: 2rem; } .bottom-nav { border: 1px solid var(--border-color); border-bottom: 0; border-radius: 14px 14px 0 0; } }
+    </style>
+</head>
+<body>
+    <main class="officer-app">
+        <header class="officer-topbar">
+            <div><div class="officer-brand">KSP CRIME AI</div><div class="officer-caption">FIELD OPERATIONS</div></div>
+            <div style="display:flex;gap:.45rem;align-items:center"><button class="icon-button" type="button" aria-label="Toggle theme" onclick="toggleMobileTheme()">◐</button><button class="icon-button" type="button" aria-label="Notifications">!</button></div>
+        </header>
+
+        <section class="welcome">
+            <h1>Good morning, Officer</h1>
+            <p>Review assigned intelligence, search verified records, and stay aware of priority activity.</p>
+        </section>
+
+        <section class="duty-card" aria-label="Officer duty status">
+            <div><div class="duty-label">Current assignment</div><div class="duty-value" id="officer-district">Loading division…</div></div>
+            <span class="status-pill">ON DUTY</span>
+        </section>
+
+        <section>
+            <div class="section-heading"><h2>Quick actions</h2></div>
+            <div class="mobile-grid">
+                <button class="mobile-action" type="button" onclick="showSection('cases')"><strong>My cases</strong><span>Review available session investigations.</span></button>
+                <button class="mobile-action" type="button" onclick="showSection('investigate')"><strong>Investigate</strong><span>Ask a question in English or Kannada.</span></button>
+                <button class="mobile-action" type="button" onclick="showSection('alerts')"><strong>Priority alerts</strong><span>See warnings generated from available data.</span></button>
+                <button class="mobile-action" type="button" onclick="showSection('profile')"><strong>Officer profile</strong><span>Identity and operational status.</span></button>
+            </div>
+        </section>
+
+        <section id="mobile-section" class="mobile-card" style="margin-top:1.2rem">
+            <div class="section-heading"><h2 id="section-title">Priority alerts</h2></div>
+            <div id="section-content"><p>Loading current operational summary…</p></div>
+            <div class="mobile-query" id="mobile-query">
+                <textarea id="mobile-query-input" placeholder="Ask about the loaded records…"></textarea>
+                <button type="button" onclick="runMobileInvestigation()">Run investigation</button>
+                <div class="mobile-answer" id="mobile-answer"></div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Mobile navigation">
+        <button class="active" type="button" onclick="showSection('home')">Home</button>
+        <button type="button" onclick="showSection('cases')">Cases</button>
+        <button type="button" onclick="showSection('alerts')">Alerts</button>
+        <button type="button" onclick="showSection('investigate')">Investigate</button>
+    </nav>
+
+    <script>
+        const sessionId = localStorage.getItem('crime_session_id') || 'default';
+        const titles = { home: 'Priority alerts', cases: 'My cases', alerts: 'Priority alerts', investigate: 'Ask KSP AI', profile: 'Officer profile' };
+        let summary = null;
+
+        function showSection(section) {
+            document.getElementById('section-title').textContent = titles[section] || 'Officer workspace';
+            document.getElementById('mobile-query').style.display = section === 'investigate' ? 'block' : 'none';
+            document.querySelectorAll('.bottom-nav button').forEach(button => button.classList.toggle('active', button.textContent.toLowerCase() === (section === 'home' ? 'home' : section)));
+            const content = document.getElementById('section-content');
+            if (section === 'investigate') { content.innerHTML = '<p>Use a focused question about the records loaded in the command center.</p>'; return; }
+            if (section === 'profile') { content.innerHTML = '<p><strong>Authenticated operational identity</strong><br>Session: ' + escapeHtml(sessionId) + '<br>Division: ' + escapeHtml(document.getElementById('officer-district').textContent) + '</p>'; return; }
+            if (section === 'cases') { content.innerHTML = '<p>Case lists remain connected to the existing session-history endpoint. Open Session History on desktop to review or export a full investigation.</p>'; return; }
+            const alerts = summary && summary.risk_band_counts && summary.risk_band_counts.high > 0
+                ? '<div class="mobile-alert"><div class="alert-mark">WARNING</div><div><strong>High-risk investigations present</strong><span>' + summary.risk_band_counts.high + ' high-risk result(s) in this session.</span></div></div>'
+                : '<p>No priority alerts are available from the current session.</p>';
+            content.innerHTML = alerts;
+        }
+
+        async function loadSummary() {
+            try {
+                const response = await fetch('/dashboard/summary?session_id=' + encodeURIComponent(sessionId));
+                if (!response.ok) throw new Error('summary unavailable');
+                summary = await response.json();
+                document.getElementById('officer-district').textContent = summary.total_cases ? 'Active intelligence dataset' : 'No dataset loaded';
+                showSection('home');
+            } catch (_) {
+                document.getElementById('officer-district').textContent = 'Connection unavailable';
+                document.getElementById('section-content').innerHTML = '<p>Connect to the command center backend to load live officer information.</p>';
+            }
+        }
+
+        async function runMobileInvestigation() {
+            const input = document.getElementById('mobile-query-input');
+            const answer = document.getElementById('mobile-answer');
+            const query = input.value.trim();
+            if (!query) { answer.textContent = 'Enter a question first.'; return; }
+            answer.textContent = 'Investigating…';
+            try {
+                const response = await fetch('/api/investigate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, session_id: sessionId }) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Investigation failed.');
+                answer.textContent = data.answer_text || 'No response generated.';
+            } catch (error) { answer.textContent = error.message; }
+        }
+
+        function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' }[char])); }
+        function toggleMobileTheme() {
+            const nextTheme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = nextTheme;
+            localStorage.setItem('crime_theme', nextTheme);
+        }
+        document.documentElement.dataset.theme = localStorage.getItem('crime_theme') === 'light' ? 'light' : 'dark';
+        loadSummary();
+    </script>
+</body>
+</html>

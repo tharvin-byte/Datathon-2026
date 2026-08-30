@@ -5,6 +5,7 @@ POST /query/text and POST /query/voice — invokes the LangGraph pipeline
 and returns the Section 8.2 JSON contract.
 """
 
+import logging
 import os
 import shutil
 import uuid
@@ -19,6 +20,7 @@ from data.dataset_loader import load_dataset
 from routers.dataset import LOADED_DATASETS
 
 router = APIRouter(prefix="/query", tags=["Query"])
+logger = logging.getLogger(__name__)
 
 class TextQueryRequest(BaseModel):
     session_id: str = "default"
@@ -40,21 +42,9 @@ def ensure_session_dataset(session: dict):
             if ds_id and ds_id in LOADED_DATASETS:
                 session["dataset"] = LOADED_DATASETS[ds_id]
             else:
-                import glob
-                uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "uploads")
-                target_path = None
-                if os.path.exists(uploads_dir):
-                    uploaded_csvs = sorted(glob.glob(os.path.join(uploads_dir, "*.csv")), key=os.path.getmtime, reverse=True)
-                    if uploaded_csvs:
-                        target_path = uploaded_csvs[0]
-                
-                if target_path and os.path.exists(target_path):
-                    loaded = load_dataset(target_path)
-                    LOADED_DATASETS["active"] = loaded
-                    session["dataset"] = loaded
-                    session["dataset_id"] = "active"
-                else:
-                    raise HTTPException(status_code=400, detail="No dataset loaded. Please upload a CSV dataset from the Dataset Ingestion tab before running an inquiry.")
+                # Do not silently attach the newest file on disk to a session.
+                # A dataset must be explicitly uploaded/selected for this process.
+                raise HTTPException(status_code=400, detail="No dataset loaded. Please upload a CSV dataset from the Dataset Ingestion tab before running an inquiry.")
 
 @router.post("/text")
 async def query_text(payload: TextQueryRequest):
@@ -127,17 +117,13 @@ async def query_text(payload: TextQueryRequest):
     except HTTPException as he:
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=he.status_code, content={"detail": he.detail})
-    except Exception as e:
-        import traceback
-        err_msg = f"{type(e).__name__}: {str(e)}"
-        traceback.print_exc()
-        try:
-            with open("scratch_error.log", "w") as f:
-                f.write(traceback.format_exc())
-        except Exception:
-            pass
+    except Exception:
+        logger.exception("Investigation pipeline failed for session %s", session_id)
         from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=500, content={"detail": err_msg})
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "The investigation could not be completed. Please retry, or check that a valid dataset is loaded."},
+        )
 
 @router.post("/voice")
 async def query_voice(

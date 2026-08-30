@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 from typing import Optional
 import pandas as pd
 from core.session_store import get_session, SESSIONS
+from core.rbac import require_permission
 from routers.dataset import LOADED_DATASETS
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 @router.get("/summary")
 async def get_dashboard_summary(session_id: Optional[str] = Query("default")):
     session = get_session(session_id or "default")
+    require_permission(session, "dashboard:view")
     dataset = session.get("dataset")
     if not dataset and "active" in LOADED_DATASETS:
         dataset = LOADED_DATASETS["active"]

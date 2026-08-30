@@ -14,7 +14,7 @@
     <!-- Vis.js & Chart.js -->
     <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css?v=20260719_10">
+    <link rel="stylesheet" href="style.css?v=20260826_institutional">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 </head>
 <body>
@@ -27,17 +27,17 @@
             <!-- Left Panel: Investigator Chat & Query Input -->
             <section class="chat-panel" id="chat-panel">
                 <div class="panel-header">
-                    <h2>AI Investigator</h2>
+                    <h2>Investigation workspace</h2>
                 </div>
                 
                 <div class="chat-history" id="chat-history">
                     <div class="message system-message">
                         <div class="msg-avatar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
                         <div class="msg-content">
-                            <h3>Welcome to KSP Crime AI Command Center</h3>
-                            <p>I am your multi-agent AI co-pilot. I coordinate specialized deterministic agents (Query, Link, Trend, Risk) and verify every claim against raw police records.</p>
+                            <h3>Start with an evidence-backed question</h3>
+                            <p>Ask about cases, people, locations, or trends in the loaded records. The system retrieves matching evidence, maps relationships, flags patterns, and shows which claims were verified.</p>
                             <div class="quick-prompts">
-                                <span>Try asking:</span>
+                                <span>Example investigations</span>
                                 <button class="prompt-chip" onclick="setQuery('Show me who is connected to the burglary in Mysuru and whether we should expect more')">Mysuru Burglary Syndicate</button>
                                 <button class="prompt-chip" onclick="setQuery('Analyze the drug trafficking and arms smuggling syndicate involving Salim Sheikh and Imran Khan')">Drug & Arms Cartel</button>
                                 <button class="prompt-chip" onclick="setQuery('Is burglary increasing in Mysuru?')">Mysuru Crime Spikes</button>
@@ -49,7 +49,7 @@
                 <!-- Input Box -->
                 <div class="chat-input-area">
                     <div class="input-wrapper">
-                        <textarea id="query-input" placeholder="Enter investigation prompt or speak in Kannada / English..." rows="2"></textarea>
+                        <textarea id="query-input" placeholder="Ask about the loaded records, or speak in Kannada / English..." rows="2"></textarea>
                         <button id="mic-btn" onclick="toggleVoiceInput()" title="Voice Input (Click tag to switch EN/KN)" style="background: var(--bg-tertiary, #1e293b); color: var(--accent-cyan, #38bdf8); border: 1px solid rgba(56,189,248,0.3); border-radius: 8px; padding: 0 12px; height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s ease;">
                             <svg id="mic-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
                             <span id="mic-lang-tag" onclick="switchMicLanguage(event)" style="font-size:11px; font-weight:700; background:rgba(56,189,248,0.15); color:var(--accent-cyan); padding:2px 6px; border-radius:4px; border:1px solid rgba(56,189,248,0.3);" title="Click to toggle English (EN) / Kannada (KN)">EN</span>
@@ -119,7 +119,7 @@
                     <div id="tab-audit" class="tab-pane">
                         <div class="pane-controls">
                             <span class="pane-title">Verifier Grounding Chain & Citations</span>
-                            <div id="verification-status-badge" class="verify-badge verified">Verified: 100%</div>
+                            <div id="verification-status-badge" class="verify-badge">Awaiting inquiry</div>
                         </div>
                         <div id="audit-table-container" class="audit-wrapper">
                             <div class="empty-state">

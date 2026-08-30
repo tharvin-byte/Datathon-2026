@@ -44,11 +44,10 @@ from datetime import datetime
 # decides which to call based on the question.
 # ---------------------------------------------------------------------------
 try:
-    import google.generativeai as genai
+    from core.llm_client import get_generative_model
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
-    genai = None
 
 # Import the four specialist agents
 from agents.query_agent import query_agent
@@ -329,12 +328,22 @@ def planner_agent(state: dict) -> dict:
 
     # --- GEMINI-POWERED PATH ---
     if GEMINI_AVAILABLE and (os.environ.get("GEMINI_API_KEY_PLANNER") or os.environ.get("GEMINI_API_KEY")):
-        _planner_key = os.environ.get("GEMINI_API_KEY_PLANNER") or os.environ["GEMINI_API_KEY"]
-        genai.configure(api_key=_planner_key)
-        model = genai.GenerativeModel(
-            "gemini-3.1-flash-lite",
-            system_instruction=SYSTEM_PROMPT,
-        )
+        try:
+            model = get_generative_model(
+                "gemini-3.1-flash-lite",
+                system_instruction=SYSTEM_PROMPT,
+                api_key_env_var="GEMINI_API_KEY_PLANNER"
+            )
+        except Exception as e:
+            print(f"[Planner] Failed to initialize model: {e}")
+            model = None
+
+        if not model:
+            print("[Planner] Falling back to rule-based planning...")
+            state = _rule_based_plan(state, query, completed_agents, planner_log)
+            state["planner_log"] = planner_log
+            state["agents_used"] = list(completed_agents)
+            return state
 
         for iteration in range(max_iterations):
             print(f"\n[Planner] --- Iteration {iteration + 1} ---")
@@ -425,6 +434,13 @@ def planner_agent(state: dict) -> dict:
         # --- RULE-BASED FALLBACK (no Gemini API key) ---
         print("[Planner] No Gemini API key — using rule-based planning")
         state = _rule_based_plan(state, query, completed_agents, planner_log)
+
+    # --- Force run link_agent if query_agent ran and found records ---
+    # This guarantees that the syndicate map is always dynamically updated and populated
+    if "query_agent" in completed_agents and state.get("records_found") and "link_agent" not in completed_agents:
+        print("[Planner] Force running link_agent to generate the dynamic syndicate network graph.")
+        state = link_agent(state)
+        completed_agents.add("link_agent")
 
     # --- Final state updates ---
     state["planner_log"] = planner_log

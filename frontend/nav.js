@@ -3,9 +3,82 @@
 // and auto-highlights the current active page while syncing session/role metadata.
 
 document.addEventListener("DOMContentLoaded", () => {
+    enforcePagePermissions();
+    applySavedTheme();
     renderNavigation();
     loadSessionMeta();
+    initThemeToggle();
 });
+
+function applySavedTheme() {
+    const theme = localStorage.getItem("crime_theme") || "dark";
+    document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+}
+
+function initThemeToggle() {
+    const toggle = document.getElementById("theme-toggle");
+    if (!toggle) return;
+    const updateLabel = () => {
+        const isLight = document.documentElement.dataset.theme === "light";
+        toggle.setAttribute("aria-label", isLight ? "Switch to dark mode" : "Switch to light mode");
+        toggle.querySelector(".theme-toggle-label").textContent = isLight ? "Dark mode" : "Light mode";
+        toggle.classList.toggle("is-light", isLight);
+    };
+    toggle.addEventListener("click", () => {
+        const nextTheme = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+        document.documentElement.dataset.theme = nextTheme;
+        localStorage.setItem("crime_theme", nextTheme);
+        updateLabel();
+    });
+    updateLabel();
+}
+
+function enforcePagePermissions() {
+    let currentPath = window.location.pathname.split("/").pop() || "index.html";
+    if (currentPath === "" || currentPath === "/") currentPath = "index.html";
+
+    // login.html is always accessible
+    if (currentPath === "login.html") return;
+
+    const rawRole = (localStorage.getItem("crime_role") || "investigator").toLowerCase();
+    const role = { state: "admin", dgp: "admin", commissioner: "senior_officer", senior: "senior_officer", inspector: "investigator", constable: "local_officer" }[rawRole] || rawRole;
+
+    const navPermissions = {
+        admin: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view", "dataset:upload"],
+        senior_officer: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        investigator: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        local_officer: ["dashboard:view", "investigation:run", "records:view", "history:view", "agent_status:view"]
+    };
+
+    const allowedPermissions = navPermissions[role] || navPermissions.local_officer;
+
+    const pagePermissions = {
+        "dashboard.html": "dashboard:view",
+        "index.html": "investigation:run",
+        "graph.html": "graph:view",
+        "trends.html": "trends:view",
+        "audit.html": "audit:view",
+        "records.html": "records:view",
+        "agent_status.html": "agent_status:view",
+        "upload.html": "dataset:upload",
+        "history.html": "history:view"
+    };
+
+    const requiredPermission = pagePermissions[currentPath];
+    if (requiredPermission && !allowedPermissions.includes(requiredPermission)) {
+        window.location.href = "dashboard.html";
+        return;
+    }
+
+    if (currentPath === "index.html" && role === "local_officer") {
+        const handle = document.getElementById("panel-resize-handle");
+        const intelPanel = document.getElementById("intel-panel");
+        const workspace = document.getElementById("workspace");
+        if (handle) handle.style.display = "none";
+        if (intelPanel) intelPanel.style.display = "none";
+        if (workspace) workspace.style.gridTemplateColumns = "1fr";
+    }
+}
 
 // SVG Icons (Lucide vector paths)
 const ICONS = {
@@ -23,14 +96,12 @@ const ICONS = {
 };
 
 function renderNavigation() {
-    // Check if target container exists or if we need to replace existing header/sidebar
     let sidebarContainer = document.getElementById("sidebar-container");
     if (!sidebarContainer) {
         sidebarContainer = document.querySelector("aside.sidebar");
     }
 
     if (!sidebarContainer) {
-        // If still no aside, look for old horizontal header.navbar to convert
         const oldHeader = document.querySelector("header.navbar");
         if (oldHeader) {
             sidebarContainer = document.createElement("aside");
@@ -39,32 +110,31 @@ function renderNavigation() {
             oldHeader.parentNode.insertBefore(sidebarContainer, oldHeader);
             oldHeader.remove();
         } else {
-            return; // No insertion point found
+            return;
         }
     } else {
         sidebarContainer.className = "sidebar";
         sidebarContainer.id = "sidebar-container";
     }
 
-    // Determine active page
     let currentPath = window.location.pathname.split("/").pop() || "index.html";
     if (currentPath === "" || currentPath === "/") currentPath = "index.html";
 
     const navLinks = [
         { section: "OVERVIEW" },
-        { href: "dashboard.html", label: "Dashboard", icon: ICONS.dashboard },
-        { href: "index.html", label: "Command Center", icon: ICONS.home },
+        { href: "dashboard.html", label: "Dashboard", icon: ICONS.dashboard, permission: "dashboard:view" },
+        { href: "index.html", label: "Command Center", icon: ICONS.home, permission: "investigation:run" },
         
         { section: "INVESTIGATION SUITE" },
-        { href: "graph.html", label: "Syndicate Map", icon: ICONS.network },
-        { href: "trends.html", label: "Crime Spikes", icon: ICONS.chart },
-        { href: "audit.html", label: "Courtroom Audit", icon: ICONS.scale },
-        { href: "records.html", label: "Database Records", icon: ICONS.folder },
+        { href: "graph.html", label: "Syndicate Map", icon: ICONS.network, permission: "graph:view" },
+        { href: "trends.html", label: "Crime Spikes", icon: ICONS.chart, permission: "trends:view" },
+        { href: "audit.html", label: "Courtroom Audit", icon: ICONS.scale, permission: "audit:view" },
+        { href: "records.html", label: "Database Records", icon: ICONS.folder, permission: "records:view" },
         
         { section: "SYSTEM & DATA" },
-        { href: "agent_status.html", label: "Agent Timeline", icon: ICONS.bot },
-        { href: "upload.html", label: "Dataset Ingestion", icon: ICONS.upload },
-        { href: "history.html", label: "Session History", icon: ICONS.history },
+        { href: "agent_status.html", label: "Agent Timeline", icon: ICONS.bot, permission: "agent_status:view" },
+        { href: "upload.html", label: "Dataset Ingestion", icon: ICONS.upload, permission: "dataset:upload" },
+        { href: "history.html", label: "Session History", icon: ICONS.history, permission: "history:view" },
         { href: "login.html", label: "Officer Gate", icon: ICONS.lock }
     ];
 
@@ -77,11 +147,42 @@ function renderNavigation() {
                     <span class="logo-subtitle">KSP Intelligence Platform</span>
                 </div>
             </div>
+            <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode">
+                <span class="theme-toggle-mark" aria-hidden="true"></span>
+                <span class="theme-toggle-label">Light mode</span>
+            </button>
         </div>
         <nav class="sidebar-nav">
     `;
 
+    const rawRole = (localStorage.getItem("crime_role") || "investigator").toLowerCase();
+    const role = { state: "admin", dgp: "admin", commissioner: "senior_officer", senior: "senior_officer", inspector: "investigator", constable: "local_officer" }[rawRole] || rawRole;
+    const navPermissions = {
+        admin: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view", "dataset:upload"],
+        senior_officer: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        investigator: ["dashboard:view", "investigation:run", "records:view", "graph:view", "trends:view", "audit:view", "history:view", "agent_status:view"],
+        local_officer: ["dashboard:view", "investigation:run", "records:view", "history:view", "agent_status:view"]
+    };
+    const allowedPermissions = navPermissions[role] || navPermissions.local_officer;
+
+    const visibleLinks = [];
+    let currentSection = null;
     navLinks.forEach(item => {
+        if (item.section) {
+            currentSection = item;
+        } else {
+            const hasPerm = !item.permission || allowedPermissions.includes(item.permission);
+            if (hasPerm) {
+                if (currentSection) {
+                    visibleLinks.push(currentSection);
+                    currentSection = null;
+                }
+                visibleLinks.push(item);
+            }
+        }
+    });
+
+    visibleLinks.forEach(item => {
         if (item.section) {
             navHtml += `<div class="nav-section-label">${item.section}</div>`;
         } else {
